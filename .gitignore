@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Xcode / SwiftPM
+build/
+DerivedData/
+.build/
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Local experiments
+scratch/
+*.ips
