@@ -62,6 +62,18 @@ audio, gestures, and what was verified versus only documented — lives in
 [`Protocol.md`](Protocol.md). If you own another Nothing device and want to help map it, that
 document is the place to start.
 
+## Download
+
+Grab `NothingX-<version>-macos.zip` from the [latest release](../../releases/latest), unzip it and
+drag **Nothing X.app** to `/Applications`. It is a universal build (Apple Silicon and Intel).
+
+The app is ad-hoc signed, not notarized, so macOS blocks the first launch of a downloaded copy.
+Either right-click the app and choose **Open**, or clear the quarantine flag once:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Nothing X.app"
+```
+
 ## Requirements
 
 - macOS 14 or later (built with Xcode 27 / Swift 6.4)
@@ -75,7 +87,7 @@ document is the place to start.
 open "build/Nothing X.app"
 ```
 
-`build.sh` compiles the Swift package and assembles an ad-hoc signed `build/Nothing X.app`. It has
+`build.sh` compiles a universal (arm64 + x86_64) Swift package and assembles an ad-hoc signed `build/Nothing X.app`. It has
 to be a real app bundle: macOS only lets a process use Bluetooth if its `Info.plist` carries a
 Bluetooth usage description. The app is intentionally **not sandboxed** (RFCOMM access), so it is
 meant to be built and run locally.
@@ -91,7 +103,8 @@ To force English on a French system:
 | `Sources/NothingX/BluetoothLink.swift` | IOBluetooth transport: finds the headphone, resolves the channel via SDP, reconnects |
 | `Sources/NothingX/HeadphoneModel.swift` | observable state, request/response matching, settings logic |
 | `Sources/NothingX/ContentView.swift`, `Theme.swift`, `BandSlider.swift` | Nothing-style UI |
-| `Resources/` | `Info.plist` and `en` / `fr` localizations |
+| `Resources/` | `Info.plist`, `en` / `fr` localizations, app icon and menu bar glyph |
+| `tools/make-icons.swift` | regenerates `AppIcon.icns` and the menu bar glyph (the "Dot X" icon) |
 
 ## Known limits
 
@@ -112,7 +125,8 @@ To force English on a French system:
 - [x] Spatial audio and gestures
 - [ ] Verify gesture remapping on the physical controls
 - [ ] Low latency, dual connection, codec, in-ear detection
-- [ ] App icon and signed release builds
+- [x] App icon (Dot X) and a first release build
+- [ ] Developer ID signing and notarization
 
 ## Disclaimer
 
