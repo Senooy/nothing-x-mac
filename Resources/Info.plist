@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key><string>dev.younes.NothingX</string>
+    <key>CFBundleName</key><string>Nothing X</string>
+    <key>CFBundleDisplayName</key><string>Nothing X</string>
+    <key>CFBundleExecutable</key><string>NothingX</string>
+    <key>CFBundlePackageType</key><string>APPL</string>
+    <key>CFBundleShortVersionString</key><string>0.1.0</string>
+    <key>CFBundleVersion</key><string>1</string>
+    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>NSHighResolutionCapable</key><true/>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array><string>en</string><string>fr</string></array>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Nothing X connects to your Nothing Headphone to control noise cancellation, the equalizer, spatial audio and to read the battery level.</string>
+</dict>
+</plist>
