@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%2014%2B-000000?style=flat-square">
+  <img alt="platform" src="https://img.shields.io/badge/platform-macOS%2014.2%2B-000000?style=flat-square">
   <img alt="swift" src="https://img.shields.io/badge/Swift-SwiftUI-D71921?style=flat-square">
   <img alt="status" src="https://img.shields.io/badge/status-work%20in%20progress-555555?style=flat-square">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-000000?style=flat-square">
@@ -30,7 +30,8 @@ directly from macOS.
 |---|---|
 | Battery level, charging state, firmware, serial number | working |
 | Noise control: ANC (High / Mid / Low / Adaptive), Transparency, Off | working |
-| Spatial audio, with head tracking | working |
+| Spatial audio on the headphone, with head tracking | working |
+| **Mac anchor**: the app renders the Mac's audio as binaural sound fixed in front of you and follows your head, like AirPods on a Mac | working, in testing |
 | Equalizer presets (Balanced, More bass, More treble, Voice) shown as 8-band curves — the bars move when you pick one | working |
 | Custom 8-band equalizer, saved locally | working |
 | Gestures: view and remap the customizable controls, restore the original table | experimental |
@@ -64,8 +65,8 @@ document is the place to start.
 
 ## Download
 
-Grab `NothingX-<version>-macos.zip` from the [latest release](../../releases/latest), unzip it and
-drag **Nothing X.app** to `/Applications`. It is a universal build (Apple Silicon and Intel).
+Grab `NothingX-<version>.dmg` from the [latest release](../../releases/latest), open it and drag
+**Nothing X.app** to the Applications folder. It is a universal build (Apple Silicon and Intel).
 
 The app is ad-hoc signed, not notarized, so macOS blocks the first launch of a downloaded copy.
 Either right-click the app and choose **Open**, or clear the quarantine flag once:
@@ -76,9 +77,9 @@ xattr -dr com.apple.quarantine "/Applications/Nothing X.app"
 
 ## Requirements
 
-- macOS 14 or later (built with Xcode 27 / Swift 6.4)
+- macOS 14.2 or later (built with Xcode 27 / Swift 6.4)
 - A Nothing Headphone (1), paired and connected to your Mac
-- Bluetooth permission for the app (macOS asks on first launch)
+- Bluetooth permission for the app, plus System Audio Recording for the Mac anchor mode (macOS asks on first use)
 
 ## Build
 
@@ -106,9 +107,24 @@ To force English on a French system:
 | `Resources/` | `Info.plist`, `en` / `fr` localizations, app icon and menu bar glyph |
 | `tools/make-icons.swift` | regenerates `AppIcon.icns` and the menu bar glyph (the "Dot X" icon) |
 
+## Mac anchor
+
+Pick **Mac anchor** under Spatial audio. The app captures everything the Mac plays (Core Audio process
+tap, muted at the source while the app runs), spatializes it with HRTF as two virtual speakers in front
+of you, and keeps them fixed while your head turns, using the headphone's motion sensor (~10 Hz,
+smoothed and extrapolated). The headphone's own spatial processing is switched off in this mode so the
+effect is not applied twice. Look at the Mac and press **Recenter** (also in the menu bar) if the image
+drifts. Yaw drift is also cancelled slowly by itself, but only while your head is still and close to the
+Mac direction, so looking at another screen never drags the anchor along. If the app quits or crashes, the normal system audio
+comes back on its own.
+
 ## Known limits
 
 - ANC level names (High / Mid / Low) follow the Nothing convention and were not confirmed by ear.
+- Mac anchor adds a little latency on top of Bluetooth (video may be slightly late), the sensor only reports
+  ~10 times a second, and the angle scale is an estimate (use the sensitivity slider).
+- Development builds signed ad hoc ask for Bluetooth permission again after every rebuild; sign with a
+  stable identity (`SIGN_IDENTITY="..." ./build.sh`) to avoid that.
 - The headphone does not expose the curves of its built-in presets, so the app defines its own
   (see `EQPreset` in `Protocol.swift`) and sends them through the custom EQ slot.
 - Gesture rewrites are accepted and read back by the headphone, but their effect on the physical

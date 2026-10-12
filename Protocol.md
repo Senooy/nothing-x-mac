@@ -31,6 +31,8 @@ Each entry is tagged:
 
 - `crc` is CRC16-Modbus (reflected polynomial `0xA001`, init `0xFFFF`) over everything before it.
 - `opId` is a host-side counter echoed in the reply; match replies by `opId`, not by arrival order.
+- The first three bytes are `55 60 01` for replies and most events but `55 20 03` for the head tracking stream:
+  validate a frame by its CRC, not by those bytes.
 
 ## Command families
 
@@ -98,6 +100,28 @@ refuses spatial audio together with bass boost or a non-flat EQ; here a preset w
 spatial audio was on was still accepted and read back, so the app conservatively resets the EQ to
 Balanced before enabling spatial audio and disables the EQ controls while it is on.
 
+### Head tracking stream — decoded, scale estimated
+
+`C058` (read, empty payload) starts a stream of `E015` notifications at a fixed ~9.5 Hz (a payload on
+`C058` does not change the rate); it runs until the RFCOMM channel closes. It works with the headphone's
+own spatial audio off. **These frames use different control bytes: `55 20 03 15 E0 10 00 00 …`** instead of
+`55 60 01`, so a parser must not require `60 01` and should rely on the CRC alone.
+
+Payload, 16 bytes, little-endian: three `Int32` orientation words then a `Float32`:
+
+| Offset | Meaning (checked with guided head movements) |
+|---|---|
+| 0 | pitch, + = looking up |
+| 4 | roll, + = right shoulder |
+| 8 | yaw, + = turned left |
+| 12 | `Float32` "settled" confidence: ~0.6–0.95 when the head is still, 0 while displaced |
+
+The words are absolute orientation (they hold at the turned value). **Yaw is calibrated**: a guided
+180° chair rotation made it plateau at ±1040…1070 M, i.e. a half turn is 2³⁰ (1 073 741 824) units
+and the range is ±180°. Pitch and roll use an estimated scale of 2⁻²⁹ rad per unit (plausible head ranges);
+the app also exposes a sensitivity slider. Yaw drifts by a few degrees per minute (gyro only), so a slow
+recentre towards the resting pose is needed. Whether `C058:00` stops the stream is not established.
+
 ### Bass boost — documented
 
 `C04E` → `[enabled, level]` (reads `00 06` here), `F051` `[enabled, level]`. Not exposed in the UI;
@@ -127,8 +151,6 @@ restore it.
 
 ## Seen but not decoded
 
-- `E015` (16 bytes, opId 0): continuous sensor stream, seen while spatial audio / head tracking was
-  being exercised during a `C000–C0FF` read sweep (probably head tracking).
 - `C017`, `C00E` (feature table of `id, flag` pairs), `C041` (low latency: `01` on, `02` off),
   `C027` (dual connection), `C029` (codec), `C055` (adaptive ANC), `C04C`.
   Writes: `F040`, `F01A`, `F01C`, `F059` according to the public references — none were tried here.
