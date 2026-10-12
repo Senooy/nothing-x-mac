@@ -24,6 +24,23 @@ final class HeadphoneModel {
     /// Inline status text (no toasts): `[OK]`, `[ERROR: …]`.
     var status = ""
 
+    // Mac-anchored spatial audio (own binaural renderer)
+    var macAnchored = false
+    var anchorDetail = ""
+    var anchorSensitivity: Double = {
+        let saved = UserDefaults.standard.double(forKey: "anchor.sensitivity")
+        return saved > 0 ? saved : 1.0
+    }() {
+        didSet { UserDefaults.standard.set(anchorSensitivity, forKey: "anchor.sensitivity") }
+    }
+    private let spatialEngine = SpatialAudioEngine()
+    private let headPose = HeadPoseFilter()
+    private var anchorTimer: Timer?
+    private var anchorWanted: Bool {
+        get { UserDefaults.standard.bool(forKey: "anchor.enabled") }
+        set { UserDefaults.standard.set(newValue, forKey: "anchor.enabled") }
+    }
+
     private let transport = BluetoothLink()
     private var opCounter: UInt8 = 0
     private var pending: [UInt8: CheckedContinuation<[UInt8]?, Never>] = [:]
@@ -51,6 +68,7 @@ final class HeadphoneModel {
         if let name { deviceName = name }
         switch state {
         case .searching:
+            stopMacAnchor(remember: true)
             connection = .searching
             for (_, cont) in pending { cont.resume(returning: nil) }
             pending.removeAll()
@@ -63,7 +81,10 @@ final class HeadphoneModel {
             connection = .connecting
         case .connected:
             connection = .connected
-            Task { await refreshAll() }
+            Task {
+                await refreshAll()
+                if anchorWanted { await startMacAnchor() }
+            }
         }
     }
 
@@ -73,6 +94,7 @@ final class HeadphoneModel {
             return
         }
         if frame.cmd == NT.Cmd.notifyANC { applyANC(frame.payload) }
+        if frame.cmd == NT.Cmd.notifyHeadPose { headPose.ingest(frame.payload, now: Date.timeIntervalSinceReferenceDate) }
     }
 
     /// Sends a command and waits for the reply carrying the same opId.
@@ -351,5 +373,74 @@ final class HeadphoneModel {
             await refreshGestures()
             report(ok && !gesturesDifferFromOriginal, String(localized: "Gestures"))
         }
+    }
+
+    // MARK: Mac-anchored spatial audio
+
+    /// Turns the app's own binaural renderer on or off. While on, the headphone's built-in spatial
+    /// processing is switched off so the effect is not applied twice.
+    func setMacAnchored(_ on: Bool) {
+        anchorWanted = on
+        if on { Task { await startMacAnchor() } } else { stopMacAnchor(remember: false) }
+    }
+
+    func recenterHead() { headPose.recenter() }
+
+    private func startMacAnchor() async {
+        guard connection == .connected, !macAnchored else { return }
+        if spatial?.on == true {
+            _ = await request(NT.Cmd.setSpatial, [0, 0])
+            await refreshSpatial()
+        }
+        // Start the sensor stream and wait for the first sample so "forward" is the current pose.
+        headPose.reset()
+        _ = await request(NT.Cmd.startHeadStream)
+        do {
+            try spatialEngine.start(outputDeviceNameContaining: "nothing")
+        } catch {
+            anchorWanted = false
+            anchorDetail = ""
+            status = String(format: String(localized: "[ERROR: %@]"), error.localizedDescription)
+            return
+        }
+        macAnchored = true
+        anchorDetail = String(localized: "Capturing system audio")
+        // The sensor stream sometimes does not start on the first request: ask again until samples arrive.
+        Task {
+            for attempt in 1...4 {
+                try? await Task.sleep(for: .seconds(2))
+                guard macAnchored, headPose.sampleCount == 0 else { return }
+                _ = await request(NT.Cmd.startHeadStream)
+            }
+        }
+        anchorTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.anchorTick() }
+        }
+    }
+
+    private var anchorTicks = 0
+    private var lastSampleCount = 0
+
+    private func anchorTick() {
+        let a = headPose.orientation(now: Date.timeIntervalSinceReferenceDate, sensitivity: anchorSensitivity)
+        anchorTicks += 1
+        if anchorTicks % 30 == 0 {   // twice a second: live feedback
+            let rate = (headPose.sampleCount - lastSampleCount) * 2
+            lastSampleCount = headPose.sampleCount
+            anchorDetail = rate == 0
+                ? String(localized: "No sensor data")
+                : String(format: String(localized: "Tracking · yaw %+.0f°"), headPose.current.yaw)
+        }
+        // Axis conventions checked by ear: the listener yaw has to be the opposite of the sensor yaw
+        // (sensor + = head turned left), otherwise the sound slides the wrong way.
+        spatialEngine.setListener(yaw: Float(-a.yaw), pitch: Float(a.pitch), roll: Float(-a.roll))
+    }
+
+    private func stopMacAnchor(remember: Bool) {
+        anchorTimer?.invalidate(); anchorTimer = nil
+        spatialEngine.stop()
+        macAnchored = false
+        anchorDetail = ""
+        if !remember { anchorWanted = false }
     }
 }

@@ -22,7 +22,10 @@ enum NT {
         static let setBassBoost: UInt16 = 0xF051
         static let setSpatial: UInt16 = 0xF052
         static let setGestures: UInt16 = 0xF003
+        /// Starts the head-orientation stream (`E015`, ~9.5 Hz, until the channel closes).
+        static let startHeadStream: UInt16 = 0xC058
         static let notifyANC: UInt16 = 0xE003
+        static let notifyHeadPose: UInt16 = 0xE015
     }
 }
 
@@ -53,7 +56,7 @@ enum Codec {
     }
 }
 
-/// Réassemble les trames depuis le flux RFCOMM (resynchronisation sur 55 60 01 + CRC).
+/// Reassembles frames from the RFCOMM byte stream (resynchronises on 0x55 and validates the CRC).
 struct FrameParser {
     private var buffer: [UInt8] = []
 
@@ -65,8 +68,8 @@ struct FrameParser {
         while true {
             guard let start = buffer.firstIndex(of: 0x55) else { buffer.removeAll(); break }
             if start > 0 { buffer.removeFirst(start) }
-            if buffer.count < 3 { break }
-            if buffer[1] != 0x60 || buffer[2] != 0x01 { buffer.removeFirst(); continue }
+            // The control bytes differ by message kind (`60 01` for replies and most events, `20 03` for the
+            // head-tracking stream), so only the CRC decides whether a candidate frame is real.
             if buffer.count < 10 { break }
             let len = Int(buffer[5]) | Int(buffer[6]) << 8
             if len > 2048 { buffer.removeFirst(); continue }

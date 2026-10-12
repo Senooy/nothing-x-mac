@@ -8,13 +8,15 @@
     <key>CFBundleExecutable</key><string>NothingX</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
-    <key>LSMinimumSystemVersion</key><string>14.0</string>
+    <key>CFBundleShortVersionString</key><string>0.2.0</string>
+    <key>CFBundleVersion</key><string>2</string>
+    <key>LSMinimumSystemVersion</key><string>14.2</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleLocalizations</key>
     <array><string>en</string><string>fr</string></array>
+    <key>NSAudioCaptureUsageDescription</key>
+    <string>Nothing X captures the Mac's audio to anchor spatial sound in front of you and to follow your head.</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Nothing X connects to your Nothing Headphone to control noise cancellation, the equalizer, spatial audio and to read the battery level.</string>
 </dict>

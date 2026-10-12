@@ -50,3 +50,15 @@
 "Noise control: ANC" = "Noise control: ANC";
 "Noise control: Off" = "Noise control: Off";
 "Quit" = "Quit";
+"Headphone" = "Headphone";
+"Mac anchor" = "Mac anchor";
+"[Recenter]" = "[Recenter]";
+"Sensitivity" = "Sensitivity";
+"Sound stays fixed in front of you, where the Mac is. Look at the Mac and press Recenter if it drifts." = "Sound stays fixed in front of you, where the Mac is. Look at the Mac and press Recenter if it drifts.";
+"Capturing system audio" = "Capturing system audio";
+"Headphone audio device not found" = "Headphone audio device not found";
+"System audio capture failed (%d)" = "System audio capture failed (%d)";
+"Audio routing failed (%d)" = "Audio routing failed (%d)";
+"No sensor data" = "No sensor data";
+"Tracking · yaw %+.0f°" = "Tracking · yaw %+.0f°";
+"Recenter head" = "Recenter head";

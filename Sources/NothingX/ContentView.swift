@@ -111,15 +111,36 @@ struct ContentView: View {
 
     // MARK: Spatial audio
 
+    private enum SpatialChoice { case off, headphone, mac }
+
+    private var spatialChoice: SpatialChoice? {
+        if model.macAnchored { return .mac }
+        guard let state = model.spatial else { return nil }
+        return state.on ? .headphone : .off
+    }
+
     private var spatialAudio: some View {
         let state = model.spatial
         return VStack(alignment: .leading, spacing: 16) {
             SectionHeader(title: "Spatial audio")
             Segmented(
-                options: [(false, String(localized: "Off")), (true, String(localized: "On"))],
-                selection: state?.on
-            ) { model.setSpatial(on: $0, headTracking: state?.headTracking ?? false) }
-            if state?.on == true {
+                options: [(SpatialChoice.off, String(localized: "Off")),
+                          (.headphone, String(localized: "Headphone")),
+                          (.mac, String(localized: "Mac anchor"))],
+                selection: spatialChoice
+            ) { choice in
+                switch choice {
+                case .off:
+                    if model.macAnchored { model.setMacAnchored(false) }
+                    model.setSpatial(on: false, headTracking: false)
+                case .headphone:
+                    if model.macAnchored { model.setMacAnchored(false) }
+                    model.setSpatial(on: true, headTracking: state?.headTracking ?? true)
+                case .mac:
+                    model.setMacAnchored(true)
+                }
+            }
+            if spatialChoice == .headphone {
                 HStack(spacing: 16) {
                     Text("Head tracking").ntLabel().frame(width: 130, alignment: .leading)
                     Segmented(
@@ -129,9 +150,37 @@ struct ContentView: View {
                 }
                 Text("EQ presets are disabled while spatial audio is on.").ntLabel(NTColor.disabled)
             }
+            if spatialChoice == .mac {
+                macAnchorControls
+            }
         }
         .disabled(!connected || state == nil)
         .opacity(connected ? 1 : 0.4)
+    }
+
+    private var macAnchorControls: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Button { model.recenterHead() } label: {
+                    Text("[Recenter]").ntLabel(NTColor.primary)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Text(verbatim: model.anchorDetail).ntLabel(NTColor.disabled)
+            }
+            HStack(spacing: 14) {
+                Text("Sensitivity").ntLabel()
+                Slider(value: Binding(get: { model.anchorSensitivity }, set: { model.anchorSensitivity = $0 }),
+                       in: 0.5...1.5, step: 0.05)
+                    .controlSize(.small)
+                Text(verbatim: String(format: "%.2f×", model.anchorSensitivity))
+                    .font(.system(size: 11, design: .monospaced))
+                    .foregroundStyle(NTColor.secondary)
+                    .frame(width: 44, alignment: .trailing)
+            }
+            Text("Sound stays fixed in front of you, where the Mac is. Look at the Mac and press Recenter if it drifts.")
+                .ntLabel(NTColor.disabled)
+        }
     }
 
     // MARK: Equalizer

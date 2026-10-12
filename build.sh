@@ -11,5 +11,7 @@ cp "$BIN" "$APP/Contents/MacOS/NothingX"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 mkdir -p "$APP/Contents/Resources"
 cp -R Resources/*.lproj Resources/AppIcon.icns Resources/MenuBarIcon*.png "$APP/Contents/Resources/"
-codesign -s - -f --deep "$APP"
+# Ad-hoc by default (used for releases). For local dev builds, set SIGN_IDENTITY to a keychain identity so
+# macOS keeps the Bluetooth and audio permissions between rebuilds.
+codesign -s "${SIGN_IDENTITY:--}" -f --deep "$APP"
 echo "OK → $APP"

@@ -50,3 +50,15 @@
 "Noise control: ANC" = "Réduction de bruit : ANC";
 "Noise control: Off" = "Réduction de bruit : désactivée";
 "Quit" = "Quitter";
+"Headphone" = "Casque";
+"Mac anchor" = "Ancré au Mac";
+"[Recenter]" = "[Recentrer]";
+"Sensitivity" = "Sensibilité";
+"Sound stays fixed in front of you, where the Mac is. Look at the Mac and press Recenter if it drifts." = "Le son reste fixe devant vous, là où se trouve le Mac. Regardez le Mac et appuyez sur Recentrer s'il dérive.";
+"Capturing system audio" = "Capture de l'audio système";
+"Headphone audio device not found" = "Périphérique audio du casque introuvable";
+"System audio capture failed (%d)" = "Échec de la capture audio système (%d)";
+"Audio routing failed (%d)" = "Échec du routage audio (%d)";
+"No sensor data" = "Pas de données du capteur";
+"Tracking · yaw %+.0f°" = "Suivi · lacet %+.0f°";
+"Recenter head" = "Recentrer la tête";

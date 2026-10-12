@@ -110,6 +110,10 @@ struct MenuContent: View {
         Button("Noise control: ANC") { model.setANCKind(.anc) }
         Button("Transparency") { model.setANCKind(.transparency) }
         Button("Noise control: Off") { model.setANCKind(.off) }
+        if model.macAnchored {
+            Divider()
+            Button("Recenter head") { model.recenterHead() }
+        }
         Divider()
         Button("Quit") { NSApplication.shared.terminate(nil) }
     }
