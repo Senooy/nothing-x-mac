@@ -68,12 +68,7 @@ document is the place to start.
 Grab `NothingX-<version>.dmg` from the [latest release](../../releases/latest), open it and drag
 **Nothing X.app** to the Applications folder. It is a universal build (Apple Silicon and Intel).
 
-The app is ad-hoc signed, not notarized, so macOS blocks the first launch of a downloaded copy.
-Either right-click the app and choose **Open**, or clear the quarantine flag once:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/Nothing X.app"
-```
+The app is signed with a Developer ID certificate and notarized by Apple, so it opens normally.
 
 ## Requirements
 
@@ -88,10 +83,13 @@ xattr -dr com.apple.quarantine "/Applications/Nothing X.app"
 open "build/Nothing X.app"
 ```
 
-`build.sh` compiles a universal (arm64 + x86_64) Swift package and assembles an ad-hoc signed `build/Nothing X.app`. It has
-to be a real app bundle: macOS only lets a process use Bluetooth if its `Info.plist` carries a
-Bluetooth usage description. The app is intentionally **not sandboxed** (RFCOMM access), so it is
-meant to be built and run locally.
+`build.sh` compiles a universal (arm64 + x86_64) Swift package and assembles an ad-hoc signed `build/Nothing X.app`
+(set `SIGN_IDENTITY` to sign with another identity). It has to be a real app bundle: macOS only lets a process
+use Bluetooth if its `Info.plist` carries a Bluetooth usage description. The app is intentionally **not
+sandboxed** (RFCOMM access).
+
+`release.sh` produces the signed, notarized and stapled DMG; see the header of the script for the one-time setup
+(a Developer ID certificate and a `notarytool` keychain profile).
 
 To force English on a French system:
 `open -n "build/Nothing X.app" --args -AppleLanguages "(en)"`.
@@ -142,7 +140,7 @@ comes back on its own.
 - [ ] Verify gesture remapping on the physical controls
 - [ ] Low latency, dual connection, codec, in-ear detection
 - [x] App icon (Dot X) and a first release build
-- [ ] Developer ID signing and notarization
+- [x] Developer ID signing and notarization
 
 ## Disclaimer
 

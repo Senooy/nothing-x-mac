@@ -12,3 +12,4 @@ xcuserdata/
 # Local experiments
 scratch/
 *.ips
+.swiftpm/

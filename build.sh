@@ -11,7 +11,11 @@ cp "$BIN" "$APP/Contents/MacOS/NothingX"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 mkdir -p "$APP/Contents/Resources"
 cp -R Resources/*.lproj Resources/AppIcon.icns Resources/MenuBarIcon*.png "$APP/Contents/Resources/"
-# Ad-hoc by default (used for releases). For local dev builds, set SIGN_IDENTITY to a keychain identity so
-# macOS keeps the Bluetooth and audio permissions between rebuilds.
-codesign -s "${SIGN_IDENTITY:--}" -f --deep "$APP"
+# Signing: ad hoc by default. Set SIGN_IDENTITY to a keychain identity to keep the Bluetooth and audio
+# permissions between rebuilds. HARDENED=1 enables the hardened runtime (required for notarization) and
+# TIMESTAMP=1 adds a secure timestamp (needed for Developer ID releases; see release.sh).
+SIGN_ARGS=()
+[[ -n "${HARDENED:-}" ]] && SIGN_ARGS+=(--options runtime --entitlements Resources/NothingX.entitlements)
+[[ -n "${TIMESTAMP:-}" ]] && SIGN_ARGS+=(--timestamp)
+codesign -s "${SIGN_IDENTITY:--}" -f --deep "${SIGN_ARGS[@]}" "$APP"
 echo "OK → $APP"
