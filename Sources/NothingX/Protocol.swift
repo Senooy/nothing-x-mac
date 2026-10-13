@@ -280,3 +280,104 @@ struct GestureBinding: Identifiable, Equatable {
         }
     }
 }
+
+// MARK: - Device settings (low latency, codec, dual connection, adaptive ANC, in-ear detection, find)
+
+extension NT.Cmd {
+    static let readLowLatency: UInt16 = 0xC041
+    static let readCodec: UInt16 = 0xC029
+    static let readDualConnection: UInt16 = 0xC027
+    static let readAdaptiveANC: UInt16 = 0xC055
+    /// Feature table: `count, (featureId, flag) × count`.
+    static let readFeatureFlags: UInt16 = 0xC00E
+    static let setLowLatency: UInt16 = 0xF040
+    static let setCodec: UInt16 = 0xF01C
+    static let setDualConnection: UInt16 = 0xF01A
+    static let setAdaptiveANC: UInt16 = 0xF059
+    static let setFeatureFlag: UInt16 = 0xF004
+    /// Rings the headphone. No read counterpart.
+    static let findHeadphone: UInt16 = 0xF002
+}
+
+/// Payload helpers for the simple one-byte device settings. Pure functions, easy to unit test.
+enum DeviceSetting {
+    /// One-byte on/off read (`C027`, `C055`): any non-zero value is on.
+    static func decodeFlag(_ p: [UInt8]) -> Bool? {
+        p.first.map { $0 != 0 }
+    }
+
+    static func encodeFlag(_ on: Bool) -> [UInt8] { [on ? 1 : 0] }
+
+    /// Low latency is `1` = on, `2` = off (not 0/1); anything else is unknown.
+    static func decodeLowLatency(_ p: [UInt8]) -> Bool? {
+        switch p.first {
+        case 1: true
+        case 2: false
+        default: nil
+        }
+    }
+
+    static func encodeLowLatency(_ on: Bool) -> [UInt8] { [on ? 1 : 2] }
+}
+
+/// `C029` / `F01C`. The firmware ACKs any value 0...3 but only 0 and 2 mean something on this headphone.
+/// Changing it makes the headphone drop the RFCOMM link to renegotiate A2DP.
+enum AudioCodec: UInt8, CaseIterable {
+    case standard = 0   // AAC / SBC
+    case ldac = 2
+
+    static func decode(_ p: [UInt8]) -> AudioCodec? { p.first.flatMap(AudioCodec.init(rawValue:)) }
+
+    func encode() -> [UInt8] { [rawValue] }
+
+    var label: String {
+        switch self {
+        case .standard: String(localized: "Standard")
+        case .ldac: String(localized: "LDAC")
+        }
+    }
+}
+
+/// The `C00E` feature table: `count, (featureId, flag) × count`. `F004` writes one entry at a time.
+struct DeviceFeatureTable: Equatable {
+    struct Entry: Equatable {
+        var id: UInt8
+        var flag: UInt8
+    }
+
+    var entries: [Entry]
+
+    /// Feature `01` is in-ear detection. It is the only one the app writes.
+    static let inEarDetection: UInt8 = 0x01
+
+    /// Tolerates a truncated table (keeps the complete pairs) but rejects an empty payload.
+    static func decode(_ p: [UInt8]) -> DeviceFeatureTable? {
+        guard let count = p.first else { return nil }
+        var entries: [Entry] = []
+        for i in 0..<Int(count) {
+            let o = 1 + 2 * i
+            guard o + 2 <= p.count else { break }
+            entries.append(Entry(id: p[o], flag: p[o + 1]))
+        }
+        return DeviceFeatureTable(entries: entries)
+    }
+
+    func flag(_ id: UInt8) -> Bool? {
+        entries.first(where: { $0.id == id }).map { $0.flag != 0 }
+    }
+
+    var inEarDetectionOn: Bool? { flag(Self.inEarDetection) }
+
+    /// `F004` payload for a single flag: `[count = 1, featureId, value]`. Other flags are never sent.
+    static func encodeSet(feature: UInt8, on: Bool) -> [UInt8] { [1, feature, on ? 1 : 0] }
+
+    static func encodeInEarDetection(on: Bool) -> [UInt8] { encodeSet(feature: inEarDetection, on: on) }
+}
+
+/// `F002 [side, on]`. `side` is `06` for a single-unit headphone (as for battery, wear and gestures);
+/// not verified for this command.
+enum FindMyHeadphone {
+    static let side: UInt8 = 0x06
+
+    static func payload(on: Bool) -> [UInt8] { [side, on ? 1 : 0] }
+}

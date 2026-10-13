@@ -77,6 +77,7 @@ final class HeadphoneModel {
             eqPreset = nil
             spatial = nil
             gestures = []
+            resetDeviceSettings()
         case .connecting:
             connection = .connecting
         case .connected:
@@ -125,6 +126,7 @@ final class HeadphoneModel {
         await refreshEQ()
         await refreshSpatial()
         await refreshGestures()
+        await refreshDeviceSettings()
     }
 
     private var pollTick = 0
@@ -136,6 +138,7 @@ final class HeadphoneModel {
         if let p = await request(NT.Cmd.readSpatial), let s = SpatialState.decode(p) { spatial = s }
         if let p = await request(NT.Cmd.readEQPreset), let v = p.first, v != eqPreset { eqPreset = v; await refreshEQ() }
         if pollTick % 6 == 0 { await refreshBattery() }
+        if pollTick % 6 == 3, deviceWrites == 0, !findPlaying { await refreshDeviceSettings() }   // 5 cheap reads, every ~30 s
     }
 
     private func refreshInfo() async {
@@ -443,4 +446,165 @@ final class HeadphoneModel {
         anchorDetail = ""
         if !remember { anchorWanted = false }
     }
+
+    // MARK: Device settings
+
+    var lowLatency: Bool?
+    var codec: AudioCodec?
+    var dualConnection: Bool?
+    var adaptiveANC: Bool?
+    var inEarDetection: Bool?
+    /// True while a find-my-headphone pulse is playing.
+    var findPlaying = false
+
+    /// Writes in flight: the slower poll skips device settings meanwhile so it cannot overwrite a fresh value.
+    private var deviceWrites = 0
+    /// Set when a codec change is sent: the headphone then drops the link to renegotiate A2DP, so the
+    /// check happens after the reconnect (see `refreshDeviceSettings`).
+    private var codecExpectation: (codec: AudioCodec, since: Date)?
+    private var findTask: Task<Void, Never>?
+    private static let findPulseSeconds = 2.0
+
+    private func resetDeviceSettings() {
+        lowLatency = nil
+        codec = nil
+        dualConnection = nil
+        adaptiveANC = nil
+        inEarDetection = nil
+        findTask?.cancel()
+        findPlaying = false
+    }
+
+    func refreshDeviceSettings() async {
+        await refreshLowLatency()
+        await refreshDualConnection()
+        await refreshAdaptiveANC()
+        await refreshInEarDetection()
+        let current = await refreshCodec()
+        if let expected = codecExpectation, let current {
+            codecExpectation = nil
+            if Date().timeIntervalSince(expected.since) < 60 {
+                report(current == expected.codec, String(localized: "Audio codec"))
+            }
+        }
+    }
+
+    @discardableResult
+    func refreshLowLatency() async -> Bool? {
+        guard let p = await request(NT.Cmd.readLowLatency), let v = DeviceSetting.decodeLowLatency(p) else { return nil }
+        lowLatency = v
+        return v
+    }
+
+    @discardableResult
+    func refreshCodec() async -> AudioCodec? {
+        guard let p = await request(NT.Cmd.readCodec) else { return nil }
+        let v = AudioCodec.decode(p)   // 1 and 3 are not meaningful here: shown as no selection
+        codec = v
+        return v
+    }
+
+    @discardableResult
+    func refreshDualConnection() async -> Bool? {
+        guard let p = await request(NT.Cmd.readDualConnection), let v = DeviceSetting.decodeFlag(p) else { return nil }
+        dualConnection = v
+        return v
+    }
+
+    @discardableResult
+    func refreshAdaptiveANC() async -> Bool? {
+        guard let p = await request(NT.Cmd.readAdaptiveANC), let v = DeviceSetting.decodeFlag(p) else { return nil }
+        adaptiveANC = v
+        return v
+    }
+
+    @discardableResult
+    func refreshInEarDetection() async -> Bool? {
+        guard let p = await request(NT.Cmd.readFeatureFlags), let table = DeviceFeatureTable.decode(p),
+              let v = table.inEarDetectionOn else { return nil }
+        inEarDetection = v
+        return v
+    }
+
+    /// Write, then read back; `readBack` returns whether the headphone now holds the requested value.
+    private func commitDeviceSetting(_ cmd: UInt16, _ payload: [UInt8], _ what: String,
+                                     readBack: @escaping () async -> Bool) {
+        deviceWrites += 1
+        Task {
+            let r = await request(cmd, payload)
+            let stored = await readBack()
+            deviceWrites -= 1
+            report(Self.acked(r) && stored, what)
+        }
+    }
+
+    func setLowLatency(_ on: Bool) {
+        lowLatency = on
+        commitDeviceSetting(NT.Cmd.setLowLatency, DeviceSetting.encodeLowLatency(on), String(localized: "Low latency")) {
+            await self.refreshLowLatency() == on
+        }
+    }
+
+    func setDualConnection(_ on: Bool) {
+        dualConnection = on
+        commitDeviceSetting(NT.Cmd.setDualConnection, DeviceSetting.encodeFlag(on), String(localized: "Dual connection")) {
+            await self.refreshDualConnection() == on
+        }
+    }
+
+    func setAdaptiveANC(_ on: Bool) {
+        adaptiveANC = on
+        commitDeviceSetting(NT.Cmd.setAdaptiveANC, DeviceSetting.encodeFlag(on), String(localized: "Adaptive ANC")) {
+            await self.refreshAdaptiveANC() == on
+        }
+    }
+
+    /// Only feature `01` of the `C00E` table is ever written.
+    func setInEarDetection(_ on: Bool) {
+        inEarDetection = on
+        commitDeviceSetting(NT.Cmd.setFeatureFlag, DeviceFeatureTable.encodeInEarDetection(on: on),
+                            String(localized: "In-ear detection")) {
+            await self.refreshInEarDetection() == on
+        }
+    }
+
+    /// The headphone drops the RFCOMM link after a codec change (A2DP renegotiation): a missing reply
+    /// or a closed link is expected, not an error. The result is checked after the reconnect.
+    func setCodec(_ newCodec: AudioCodec) {
+        guard newCodec != codec else { return }
+        codec = newCodec
+        codecExpectation = (newCodec, Date())
+        deviceWrites += 1
+        Task {
+            _ = await request(NT.Cmd.setCodec, newCodec.encode())
+            if connection == .connected {
+                var current = await refreshCodec()
+                if current != newCodec && connection == .connected {
+                    try? await Task.sleep(for: .seconds(4))   // the drop may come a moment after the ACK
+                    if connection == .connected { current = await refreshCodec() }
+                }
+                if connection == .connected, codecExpectation != nil {
+                    codecExpectation = nil
+                    report(current == newCodec, String(localized: "Audio codec"))
+                }
+            }
+            deviceWrites -= 1
+        }
+    }
+
+    /// Experimental: rings the headphone for a few seconds, then always sends off. Loud if worn:
+    /// the UI asks to take it off first.
+    func startFindPulse() {
+        guard connection == .connected, !findPlaying else { return }
+        findPlaying = true
+        findTask = Task {
+            let on = Self.acked(await request(NT.Cmd.findHeadphone, FindMyHeadphone.payload(on: true)))
+            if on { try? await Task.sleep(for: .seconds(Self.findPulseSeconds)) }   // cancelled by stopFind
+            let off = Self.acked(await request(NT.Cmd.findHeadphone, FindMyHeadphone.payload(on: false)))
+            findPlaying = false
+            report(on && off, String(localized: "Find my headphone"))
+        }
+    }
+
+    func stopFind() { findTask?.cancel() }
 }
