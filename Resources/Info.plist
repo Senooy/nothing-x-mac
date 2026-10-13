@@ -19,5 +19,12 @@
     <string>Nothing X captures the Mac's audio to anchor spatial sound in front of you and to follow your head.</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Nothing X connects to your Nothing Headphone to control noise cancellation, the equalizer, spatial audio and to read the battery level.</string>
+    <!-- Sparkle updates. SUEnableAutomaticChecks is left unset: Sparkle asks on the second launch. -->
+    <key>SUFeedURL</key>
+    <string>https://github.com/Senooy/nothing-x-mac/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>uts2dFuF4nnAe3nSSdqB50bZ4xBOGo9zgvydX76vVzU=</string>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
 </dict>
 </plist>

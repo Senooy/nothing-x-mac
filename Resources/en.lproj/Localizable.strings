@@ -123,3 +123,9 @@
 "%d filters dropped: only 8 bands, kept the 8 with the largest gain" = "%d filters dropped: only 8 bands, kept the 8 with the largest gain";
 "%d gains clamped to ±12 dB" = "%d gains clamped to ±12 dB";
 "Preamp %@ dB not applied" = "Preamp %@ dB not applied";
+"Check for Updates…" = "Check for Updates…";
+"Updates" = "Updates";
+"Check automatically" = "Check automatically";
+"Version" = "Version";
+"[Check now]" = "[Check now]";
+"Unavailable in development builds" = "Unavailable in development builds";

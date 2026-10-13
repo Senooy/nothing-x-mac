@@ -73,6 +73,17 @@ Grab `NothingX-<version>.dmg` from the [latest release](../../releases/latest), 
 
 The app is signed with a Developer ID certificate and notarized by Apple, so it opens normally.
 
+Or install it with [Homebrew](https://brew.sh):
+
+```bash
+brew tap Senooy/nothing-x https://github.com/Senooy/nothing-x-mac
+brew install --cask nothing-x
+```
+
+Updates come through the app itself ([Sparkle](https://sparkle-project.org)): it checks GitHub once a day
+(it asks on the second launch whether to check automatically), and the menu bar item has **Check for Updates…**.
+The cask is marked `auto_updates`, so `brew upgrade` leaves the app to Sparkle.
+
 ## Requirements
 
 - macOS 14.2 or later (built with Xcode 27 / Swift 6.4)
@@ -92,7 +103,10 @@ use Bluetooth if its `Info.plist` carries a Bluetooth usage description. The app
 sandboxed** (RFCOMM access).
 
 `release.sh` produces the signed, notarized and stapled DMG; see the header of the script for the one-time setup
-(a Developer ID certificate and a `notarytool` keychain profile).
+(a Developer ID certificate and a `notarytool` keychain profile). It then writes `build/appcast.xml`
+(`scripts/make-appcast.sh`, EdDSA-signed with the Sparkle key stored in the login keychain), bumps
+`Casks/nothing-x.rb` (`scripts/update-cask.sh`) and prints the `gh release` command that attaches the DMG
+**and** `appcast.xml` to the release.
 
 Unit tests (EQ file parsing): `swift test`.
 
