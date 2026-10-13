@@ -76,7 +76,8 @@ struct WindowConfigurator: NSViewRepresentable {
 
 @main
 struct NothingXApp: App {
-    @State private var model = HeadphoneModel(startLink: !OnboardingController.shared.isPresented)
+    /// Defer the link only while the tour is pending and the Bluetooth prompt has not been answered: the prompt must come after the tour explains it.
+    @State private var model = HeadphoneModel(startLink: !OnboardingController.shared.isPresented || BluetoothGate.current != .pending)
     /// Starts Sparkle at launch (scheduled checks need the updater running).
     private let updater = Updater.shared
 
