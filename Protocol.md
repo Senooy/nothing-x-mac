@@ -88,6 +88,14 @@ Type 0 = low shelf, 1 = peaking, 2 = high shelf. Default: 8 bands at 55/110/220/
 Q = 1, 0 dB. Only profile `0` exists; profiles 1–3 read back as zeros and 4+ do not answer.
 Selecting the custom curve is done with preset `5`; `F050` alone does not change the active preset.
 
+#### EQ files (app side, no new command)
+
+The app imports and exports the custom EQ as AutoEq / Equalizer APO text (`Preamp:` plus
+`Filter n: ON PK|LSC|HSC Fc <Hz> Gain <dB> Q <q>`), see `EQInterchange.swift`. Filter types map to the band
+type byte (`LSC`/`LS`/`LSQ` → 0, `PK` → 1, `HSC`/`HS`/`HSQ` → 2); the result is always 8 bands written with
+`F050`, then preset `5`. The file's preamp is **not** written to the profile `gain` field (offset 2 of the
+payload): its effect on the firmware is *documented* only, not verified. Per-band gains are limited to ±12 dB.
+
 ### Spatial audio — verified (read-back), effect documented as audible
 
 | Cmd | Payload |

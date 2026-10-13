@@ -204,10 +204,17 @@ struct ContentView: View {
                         }
                     }
                 }
-                Button { model.resetCustomEQ() } label: {
-                    Text("[Reset to zero]").ntLabel(NTColor.secondary)
+                HStack(spacing: 24) {
+                    Button { model.resetCustomEQ() } label: {
+                        Text("[Reset to zero]").ntLabel(NTColor.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    EQFileActions(model: model)
                 }
-                .buttonStyle(.plain)
+                if !model.eqImportNote.isEmpty {
+                    Text(verbatim: model.eqImportNote).ntLabel(NTColor.disabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
         .disabled(!connected || spatialOn)

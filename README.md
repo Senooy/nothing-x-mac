@@ -34,6 +34,7 @@ directly from macOS.
 | **Mac anchor**: the app renders the Mac's audio as binaural sound fixed in front of you and follows your head, like AirPods on a Mac | working, in testing |
 | Equalizer presets (Balanced, More bass, More treble, Voice) shown as 8-band curves — the bars move when you pick one | working |
 | Custom 8-band equalizer, saved locally | working |
+| EQ files: import an AutoEq / Equalizer APO `ParametricEQ.txt` (or a `GraphicEQ:` line) into the custom EQ, export the current curve | working, not yet tried on the headphone |
 | Gestures: view and remap the customizable controls, restore the original table | experimental |
 | Menu bar item: battery and quick noise-control switching | working |
 | Notifications: low battery (20 % or 10 %) and headphone connected, configured in Settings (⌘,) | working |
@@ -93,6 +94,8 @@ sandboxed** (RFCOMM access).
 `release.sh` produces the signed, notarized and stapled DMG; see the header of the script for the one-time setup
 (a Developer ID certificate and a `notarytool` keychain profile).
 
+Unit tests (EQ file parsing): `swift test`.
+
 To force English on a French system:
 `open -n "build/Nothing X.app" --args -AppleLanguages "(en)"`.
 
@@ -102,12 +105,38 @@ To force English on a French system:
 |---|---|
 | `Sources/NothingX/Protocol.swift` | frame codec, CRC16, command ids, ANC / EQ / spatial / gesture models |
 | `Sources/NothingX/BluetoothLink.swift` | IOBluetooth transport: finds the headphone, resolves the channel via SDP, reconnects |
+| `Sources/NothingX/EQInterchange.swift`, `EQFileActions.swift` | AutoEq / Equalizer APO import and export (pure parser + serializer, and the Import / Export buttons) |
+| `Tests/NothingXTests/` | unit tests for the EQ file parser (`swift test`) |
 | `Sources/NothingX/HeadphoneModel.swift` | observable state, request/response matching, settings logic |
 | `Sources/NothingX/ContentView.swift`, `Theme.swift`, `BandSlider.swift` | Nothing-style UI |
 | `Sources/NothingX/NotificationService.swift`, `NotificationRules.swift` | notification permission and posting; pure threshold / hysteresis rules |
 | `Sources/NothingX/SettingsView.swift` | Settings window (⌘,), one view per section |
 | `Resources/` | `Info.plist`, `en` / `fr` localizations, app icon and menu bar glyph |
 | `tools/make-icons.swift` | regenerates `AppIcon.icns` and the menu bar glyph (the "Dot X" icon) |
+
+## EQ files
+
+**Import…** / **Export…** under the equalizer read and write the plain-text format used by
+[AutoEq](https://github.com/jaakkopasanen/AutoEq) and Equalizer APO (`ParametricEQ.txt`):
+
+```
+Preamp: -6.2 dB
+Filter 1: ON PK Fc 31 Hz Gain 2.4 dB Q 1.41
+Filter 2: ON LSC Fc 105 Hz Gain 4.5 dB Q 0.70
+```
+
+- `PK` is a peaking filter, `LSC` / `LS` / `LSQ` a low shelf, `HSC` / `HS` / `HSQ` a high shelf. `OFF` filters
+  are skipped; other types (low/high pass, notch...) are ignored with a warning. Decimal commas, missing
+  units, `BW Oct` instead of `Q` and a `GraphicEQ: 25 -3; 40 -2.5; ...` line (sampled at the 8 band centres
+  in log frequency) are accepted.
+- The headphone has exactly **8 bands**. With fewer filters the rest are 0 dB bands at the default
+  frequencies; with more, the 8 with the largest |gain| are kept and the warning says how many were dropped.
+  Gains are limited to ±12 dB (reported).
+- **Preamp is not applied**: the custom EQ payload has a global gain field, but what the firmware does with
+  it is unverified, so the preamp line is only reported. Keep an eye on clipping if a file boosts a lot.
+- Importing sends the curve like a manual edit (written, read back, switches to Custom). Note that the
+  shelf type, frequency and Q of the imported bands stay on the headphone; the preset buttons and
+  **Reset to zero** only change gains.
 
 ## Mac anchor
 
