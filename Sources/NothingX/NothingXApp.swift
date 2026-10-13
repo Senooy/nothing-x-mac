@@ -76,7 +76,7 @@ struct WindowConfigurator: NSViewRepresentable {
 
 @main
 struct NothingXApp: App {
-    @State private var model = HeadphoneModel()
+    @State private var model = HeadphoneModel(startLink: !OnboardingController.shared.isPresented)
     /// Starts Sparkle at launch (scheduled checks need the updater running).
     private let updater = Updater.shared
 
@@ -89,8 +89,8 @@ struct NothingXApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        WindowGroup(id: "main") {
+            OnboardingRoot()
                 .environment(model)
                 .preferredColorScheme(.dark)
                 .background(WindowConfigurator())
@@ -114,6 +114,7 @@ struct NothingXApp: App {
 struct MenuContent: View {
     @Environment(HeadphoneModel.self) private var model
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         if model.connection == .connected {
@@ -140,6 +141,7 @@ struct MenuContent: View {
             openSettings()
         }
         .keyboardShortcut(",")
+        Button("Show Welcome…") { OnboardingController.shared.replay { openWindow(id: "main") } }
         Button("Check for Updates…") { Updater.shared.checkForUpdates() }
             .disabled(!Updater.shared.canCheckForUpdates)
         Button("Quit") { NSApplication.shared.terminate(nil) }
