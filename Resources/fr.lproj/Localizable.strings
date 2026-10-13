@@ -62,3 +62,9 @@
 "No sensor data" = "Pas de données du capteur";
 "Tracking · yaw %+.0f°" = "Suivi · lacet %+.0f°";
 "Recenter head" = "Recentrer la tête";
+"Waiting for Bluetooth permission…" = "En attente de l'autorisation Bluetooth…";
+"Bluetooth access denied" = "Accès Bluetooth refusé";
+"[Open Bluetooth settings]" = "[Ouvrir les réglages Bluetooth]";
+"Open Bluetooth settings" = "Ouvrir les réglages Bluetooth";
+"Answer the macOS prompt. It may be on another display." = "Répondez à la demande de macOS, peut-être sur un autre écran.";
+"Allow it in Privacy & Security › Bluetooth." = "Autorisez-le dans Confidentialité et sécurité › Bluetooth.";

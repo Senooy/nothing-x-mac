@@ -123,6 +123,11 @@ comes back on its own.
   ~10 times a second, and the angle scale is an estimate (use the sensitivity slider).
 - Development builds signed ad hoc ask for Bluetooth permission again after every rebuild; sign with a
   stable identity (`SIGN_IDENTITY="..." ./build.sh`) to avoid that.
+- Bluetooth permission: the app checks the macOS Bluetooth permission before touching IOBluetooth, so the
+  window opens right away. Until you answer the system prompt (which can appear on another display) it shows
+  "Waiting for Bluetooth permission…"; if access was denied it shows "Bluetooth access denied" with a link to
+  Privacy & Security › Bluetooth. Granting access later is picked up without restarting the app. To see the
+  prompt again: `tccutil reset Bluetooth dev.younes.NothingX`.
 - The headphone does not expose the curves of its built-in presets, so the app defines its own
   (see `EQPreset` in `Protocol.swift`) and sends them through the custom EQ slot.
 - Gesture rewrites are accepted and read back by the headphone, but their effect on the physical

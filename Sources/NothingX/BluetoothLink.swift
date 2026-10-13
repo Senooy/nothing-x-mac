@@ -1,10 +1,23 @@
+import AppKit
 import Foundation
 import IOBluetooth
 
 /// Transport RFCOMM vers le service « NT LINK » du casque.
 /// Tout se déroule sur le thread principal (callbacks IOBluetooth inclus).
+///
+/// Bluetooth permission: the first IOBluetooth call (`IOBluetoothDevice.pairedDevices()`) blocks the calling
+/// thread on a semaphore until the user answers the macOS "would like to use Bluetooth" prompt, which
+/// froze the app before its window appeared. So nothing here touches IOBluetooth before
+/// `CBManager.authorization` says `.allowedAlways` (see `BluetoothGate`):
+/// - not determined → state `.permissionPending`; a `BluetoothPermissionWatcher` creates a CBCentralManager
+///   off the main thread, which shows the prompt, and reports the answer;
+/// - denied / restricted → state `.permissionDenied`; IOBluetooth is never called;
+/// - allowed → the 3 s search timer starts as before.
+/// The gate is checked again whenever the app becomes active (the user may have flipped the switch in
+/// System Settings) and every 3 s while it is closed, so access granted later works without a restart,
+/// and access revoked while running closes the link.
 final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
-    enum State { case searching, connecting, connected }
+    enum State { case searching, connecting, connected, permissionPending, permissionDenied }
 
     var onState: ((State, String?) -> Void)?
     var onFrame: ((Frame) -> Void)?
@@ -20,19 +33,80 @@ final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
     private var timer: Timer?
     private var busy = false
 
+    private var gate: BluetoothGate?
+    private var watcher: BluetoothPermissionWatcher?
+    private var gateTimer: Timer?
+    private var activeObserver: NSObjectProtocol?
+
     func start() {
-        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in self?.tick() }
-        tick()
+        activeObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.applyGate(BluetoothGate.current) }
+        applyGate(BluetoothGate.current)
     }
 
     func stop() {
-        timer?.invalidate()
+        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
+        activeObserver = nil
+        stopWatcher()
+        gateTimer?.invalidate(); gateTimer = nil
+        timer?.invalidate(); timer = nil
         channel?.close()
+    }
+
+    // MARK: Permission gate
+
+    /// Moves the transport to what the permission allows. Idempotent; main thread only.
+    private func applyGate(_ new: BluetoothGate) {
+        guard new != gate else { return }
+        gate = new
+        switch new {
+        case .allowed:
+            stopWatcher()
+            gateTimer?.invalidate(); gateTimer = nil
+            state = .searching
+            timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in self?.tick() }
+            tick()
+        case .pending, .denied:
+            // Revoked while running (or never granted): drop the link without calling IOBluetooth
+            // beyond closing a channel that exists only if access was granted before.
+            timer?.invalidate(); timer = nil
+            channel?.close()
+            channel = nil
+            device = nil
+            busy = false
+            parser.reset()
+            if new == .pending {
+                startWatcher()
+            } else {
+                stopWatcher()
+            }
+            if gateTimer == nil {
+                // Fallback in case no delegate callback or activation arrives (prompt on another display).
+                gateTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+                    self?.applyGate(BluetoothGate.current)
+                }
+            }
+            if let closed = new.linkState { state = closed }
+        }
+    }
+
+    private func startWatcher() {
+        guard watcher == nil else { return }
+        let w = BluetoothPermissionWatcher()
+        w.onChange = { [weak self] gate in self?.applyGate(gate) }
+        watcher = w
+        w.start()
+    }
+
+    private func stopWatcher() {
+        watcher?.stop()
+        watcher = nil
     }
 
     /// Cherche un casque Nothing appairé et connecté, puis résout le canal RFCOMM par SDP.
     private func tick() {
-        guard channel == nil, !busy else { return }
+        guard gate == .allowed, channel == nil, !busy else { return }
         let paired = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice]) ?? []
         guard let dev = paired.first(where: { ($0.name ?? "").localizedCaseInsensitiveContains("nothing") && $0.isConnected() }) else {
             state = .searching
@@ -49,11 +123,11 @@ final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
         busy = false
         channel = nil
         parser.reset()
-        state = .searching
+        if gate == .allowed { state = .searching }
     }
 
     @objc func sdpQueryComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
-        guard status == kIOReturnSuccess, let dev = device else { return fail() }
+        guard gate == .allowed, status == kIOReturnSuccess, let dev = device else { return fail() }
         let uuid = IOBluetoothSDPUUID(bytes: NT.serviceUUID, length: NT.serviceUUID.count)
         var channelID: BluetoothRFCOMMChannelID = 0
         for case let record as IOBluetoothSDPServiceRecord in dev.services ?? [] {
@@ -73,6 +147,11 @@ final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
 
     func rfcommChannelOpenComplete(_ rfcommChannel: IOBluetoothRFCOMMChannel!, status error: IOReturn) {
         busy = false
+        if gate != .allowed {
+            // Access revoked while the channel was opening.
+            rfcommChannel?.close()
+            return fail()
+        }
         if error == kIOReturnSuccess {
             state = .connected
         } else {

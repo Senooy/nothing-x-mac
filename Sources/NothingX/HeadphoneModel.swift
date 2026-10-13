@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class HeadphoneModel {
-    enum Connection { case searching, connecting, connected }
+    enum Connection { case searching, connecting, connected, permissionPending, permissionDenied }
 
     var connection: Connection = .searching
     var deviceName = "Nothing Headphone"
@@ -67,9 +67,10 @@ final class HeadphoneModel {
     private func linkChanged(_ state: BluetoothLink.State, _ name: String?) {
         if let name { deviceName = name }
         switch state {
-        case .searching:
+        case .searching, .permissionPending, .permissionDenied:
             stopMacAnchor(remember: true)
-            connection = .searching
+            connection = state == .permissionPending ? .permissionPending
+                : state == .permissionDenied ? .permissionDenied : .searching
             for (_, cont) in pending { cont.resume(returning: nil) }
             pending.removeAll()
             battery = nil
