@@ -30,8 +30,12 @@ struct SettingsRow<Control: View>: View {
         HStack(alignment: .center, spacing: 24) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title).ntLabel(NTColor.primary)
-                if let detail { Text(detail).font(.system(size: 12)).foregroundStyle(NTColor.disabled) }
+                if let detail {
+                    Text(detail).font(.system(size: 12)).foregroundStyle(NTColor.disabled)
+                        .fixedSize(horizontal: false, vertical: true)   // wrap instead of truncating
+                }
             }
+            .layoutPriority(1)
             Spacer(minLength: 0)
             control.frame(width: 160)
         }
