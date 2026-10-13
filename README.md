@@ -38,7 +38,8 @@ directly from macOS.
 | Menu bar item: battery and quick noise-control switching | working |
 | Notifications: low battery (20 % or 10 %) and headphone connected, configured in Settings (⌘,) | working |
 | English UI, French when macOS is set to French | working |
-| Low-latency mode, dual connection, codec, in-ear detection | not yet mapped |
+| Device settings: low latency, codec (Standard / LDAC), dual connection, adaptive ANC, in-ear detection | experimental (reads verified, writes untested) |
+| Find my headphone (short pulse, asks you to take the headphone off first) | experimental |
 
 Settings changed from the headphone's own buttons are picked up within a few seconds, and the app
 reconnects by itself when the headphone comes back.

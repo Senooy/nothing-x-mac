@@ -149,8 +149,39 @@ differently has not been confirmed** (on an Ear (3a) such writes were reported t
 The app therefore marks gestures as experimental and keeps the first table it ever read so it can
 restore it.
 
+### Device settings — reads seen here, writes documented
+
+Reads were seen on this headphone (current values in the table). **No write below has been tried here yet**,
+so every write is *documented*; the app verifies each one with a read-back and reports `[ERROR: …]` when
+the value did not change. Reads are repeated about every 30 s.
+
+| Setting | Read | Write | Payload | Status |
+|---|---|---|---|---|
+| Low latency | `C041` → 1 byte, `01` on / `02` off (reads `02`) | `F040` | `[1]` on, `[2]` off | documented |
+| Audio codec | `C029` → 1 byte (reads `00`) | `F01C` | `0` Standard (AAC/SBC), `2` LDAC | documented |
+| Dual connection | `C027` → 1 byte (reads `00`) | `F01A` | `[on]` | documented |
+| Adaptive ANC | `C055` → 1 byte (reads `01`) | `F059` | `[on]` | documented |
+| In-ear detection | `C00E` → `count, (featureId, flag) × count` | `F004` | `[01, 01, on]` = count, feature, value | documented |
+| Find my headphone | none | `F002` | `[side, on]`, `side` = `06` (assumed) | documented, side unverified, no read-back |
+
+Notes:
+
+- **Codec**: the firmware ACKs any value 0–3 but only `0` and `2` mean something here (the app shows no
+  selection for `1`/`3`). **After a change the headphone drops the RFCOMM link** to renegotiate A2DP; the app
+  treats the missing reply as expected, shows "Reconnect after changing", lets `BluetoothLink` reconnect and
+  checks the codec once the link is back (a mismatch within 60 s is reported then).
+- **Dual connection**: public notes say it is usually exclusive with the hi-res codec. The app shows a hint but
+  does not enforce it.
+- **Adaptive ANC** (`C055`) is a separate flag from ANC mode `4` ("adaptive" in `C01E`/`F00F`); how the two
+  interact is not established.
+- **In-ear detection** is feature `01` of the `C00E` table. This headphone reads
+  `09 01 00 02 01 07 01 09 01 0A 01 0B 00 0E 01 12 01 15 01`: nine features `01..`, in-ear detection (`01`)
+  currently `00`. Only feature `01` is ever written, the other flags are never touched. The meaning of the
+  other features is unknown.
+- **Find my headphone** can play a **loud sound while worn**. The app asks for a two-step confirmation
+  ("Take the headphone off first"), sends `on`, waits 2 s and always sends `off` (also on Stop). `side` `06`
+  is inferred from battery/wear/gestures; there is no read to confirm the state, so only the ACK is checked.
+
 ## Seen but not decoded
 
-- `C017`, `C00E` (feature table of `id, flag` pairs), `C041` (low latency: `01` on, `02` off),
-  `C027` (dual connection), `C029` (codec), `C055` (adaptive ANC), `C04C`.
-  Writes: `F040`, `F01A`, `F01C`, `F059` according to the public references — none were tried here.
+- `C017`, `C04C`.

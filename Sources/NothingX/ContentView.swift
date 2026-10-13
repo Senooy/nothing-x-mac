@@ -26,6 +26,7 @@ struct ContentView: View {
                     VStack(alignment: .leading, spacing: 40) {
                         equalizer
                         gestures
+                        DeviceSettingsView()
                     }
                     .padding(.bottom, 8)
                 }
