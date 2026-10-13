@@ -66,5 +66,5 @@
 "Bluetooth access denied" = "Accès Bluetooth refusé";
 "[Open Bluetooth settings]" = "[Ouvrir les réglages Bluetooth]";
 "Open Bluetooth settings" = "Ouvrir les réglages Bluetooth";
-"Answer the macOS prompt to let Nothing X reach your headphone. It may be on another display." = "Répondez à la demande de macOS pour que Nothing X accède à votre casque. Elle peut être sur un autre écran.";
-"Allow Nothing X in Privacy & Security, Bluetooth. It reconnects by itself." = "Autorisez Nothing X dans Confidentialité et sécurité, Bluetooth. La connexion reprend d'elle-même.";
+"Answer the macOS prompt. It may be on another display." = "Répondez à la demande de macOS, peut-être sur un autre écran.";
+"Allow it in Privacy & Security › Bluetooth." = "Autorisez-le dans Confidentialité et sécurité › Bluetooth.";

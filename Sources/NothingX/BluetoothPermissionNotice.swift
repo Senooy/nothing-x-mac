@@ -10,13 +10,13 @@ struct BluetoothPermissionNotice: View {
         case .permissionPending:
             VStack(alignment: .leading, spacing: 10) {
                 Text("Waiting for Bluetooth permission…").ntLabel(NTColor.primary)
-                Text("Answer the macOS prompt to let Nothing X reach your headphone. It may be on another display.")
+                Text("Answer the macOS prompt. It may be on another display.")
                     .ntLabel(NTColor.disabled)
             }
         case .permissionDenied:
             VStack(alignment: .leading, spacing: 10) {
                 Text("Bluetooth access denied").ntLabel(NTColor.primary)
-                Text("Allow Nothing X in Privacy & Security, Bluetooth. It reconnects by itself.")
+                Text("Allow it in Privacy & Security › Bluetooth.")
                     .ntLabel(NTColor.disabled)
                 Button { BluetoothGate.openSettings() } label: {
                     Text("[Open Bluetooth settings]").ntLabel(NTColor.secondary)
