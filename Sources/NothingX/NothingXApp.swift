@@ -4,16 +4,23 @@ import AppKit
 /// Blends the window chrome into the content: the title bar is transparent over a black window, so it
 /// reads as black. Content is NOT extended under it, which keeps the traffic-light buttons on top.
 struct WindowConfigurator: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { ConfiguratorView() }
+    var title = "Nothing X"
+
+    func makeNSView(context: Context) -> NSView {
+        let view = ConfiguratorView()
+        view.windowTitle = title
+        return view
+    }
     func updateNSView(_ nsView: NSView, context: Context) {}
 
     final class ConfiguratorView: NSView {
         private var observers: [NSObjectProtocol] = []
         private var hiddenWatchers: [NSKeyValueObservation] = []
+        var windowTitle = "Nothing X"
 
         override func viewDidMoveToWindow() {
             guard let window else { return }
-            window.title = "Nothing X"
+            window.title = windowTitle
             window.styleMask.formUnion([.titled, .closable, .miniaturizable, .fullSizeContentView])
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
@@ -88,6 +95,11 @@ struct NothingXApp: App {
         }
         .windowResizability(.contentSize)
 
+        Settings {
+            SettingsView()
+                .environment(model)
+        }
+
         MenuBarExtra {
             MenuContent().environment(model)
         } label: {
@@ -99,6 +111,7 @@ struct NothingXApp: App {
 
 struct MenuContent: View {
     @Environment(HeadphoneModel.self) private var model
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         if model.connection == .connected {
@@ -120,6 +133,11 @@ struct MenuContent: View {
             Button("Recenter head") { model.recenterHead() }
         }
         Divider()
+        Button("Settings…") {
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+        }
+        .keyboardShortcut(",")
         Button("Quit") { NSApplication.shared.terminate(nil) }
     }
 }
