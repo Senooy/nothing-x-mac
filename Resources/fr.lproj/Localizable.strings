@@ -88,12 +88,7 @@
 "Notifications need the packaged app." = "Les notifications nécessitent l'app empaquetée.";
 "Device" = "Appareil";
 "Low latency" = "Faible latence";
-"Audio codec" = "Codec audio";
-"Standard" = "Standard";
-"LDAC" = "LDAC";
-"Reconnect after changing" = "Reconnexion après modification";
 "Dual connection" = "Double connexion";
-"Usually not available together with LDAC." = "Généralement indisponible avec LDAC.";
 "Adaptive ANC" = "ANC adaptatif";
 "In-ear detection" = "Détection du port";
 "Find my headphone" = "Retrouver mon casque";

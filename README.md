@@ -39,8 +39,8 @@ directly from macOS.
 | Menu bar item: battery and quick noise-control switching | working |
 | Notifications: low battery (20 % or 10 %) and headphone connected, configured in Settings (⌘,) | working |
 | English UI, French when macOS is set to French | working |
-| Device settings: low latency, codec (Standard / LDAC), dual connection, adaptive ANC, in-ear detection | experimental (reads verified, writes untested) |
-| Find my headphone (short pulse, asks you to take the headphone off first) | experimental |
+| Device settings: low latency, dual connection, adaptive ANC, in-ear detection (write and read-back checked on the headphone) | working |
+| Find my headphone (2 s pulse, asks you to take the headphone off first) | working |
 
 Settings changed from the headphone's own buttons are picked up within a few seconds, and the app
 reconnects by itself when the headphone comes back.
@@ -205,7 +205,7 @@ Open **Settings** with ⌘, or from the menu bar item.
 - [x] Custom EQ editor
 - [x] Spatial audio and gestures
 - [ ] Verify gesture remapping on the physical controls
-- [ ] Low latency, dual connection, codec, in-ear detection
+- [x] Low latency, dual connection, adaptive ANC, in-ear detection (LDAC is not offered: macOS only plays SBC and AAC)
 - [x] App icon (Dot X) and a first release build
 - [x] Developer ID signing and notarization
 

@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// "Device" section: low latency, codec, dual connection, adaptive ANC, in-ear detection, find my headphone.
+/// "Device" section: low latency, dual connection, adaptive ANC, in-ear detection, find my headphone.
+/// The audio codec (LDAC) is deliberately not offered: macOS only plays SBC and AAC over Bluetooth, so
+/// switching the headphone to LDAC changes nothing audible on a Mac (the model still supports it).
 struct DeviceSettingsView: View {
     @Environment(HeadphoneModel.self) private var model
     /// First step of the find-my-headphone confirmation ("take it off first").
@@ -12,9 +14,7 @@ struct DeviceSettingsView: View {
         VStack(alignment: .leading, spacing: 16) {
             SectionHeader(title: "Device")
             toggleRow("Low latency", model.lowLatency) { model.setLowLatency($0) }
-            codecRow
             toggleRow("Dual connection", model.dualConnection) { model.setDualConnection($0) }
-            Text("Usually not available together with LDAC.").ntLabel(NTColor.disabled)
             toggleRow("Adaptive ANC", model.adaptiveANC) { model.setAdaptiveANC($0) }
             toggleRow("In-ear detection", model.inEarDetection) { model.setInEarDetection($0) }
             findRow
@@ -38,18 +38,6 @@ struct DeviceSettingsView: View {
                 selection: value,
                 onSelect: onSelect
             )
-        }
-    }
-
-    private var codecRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            row("Audio codec") {
-                Segmented(
-                    options: AudioCodec.allCases.map { ($0, $0.label) },
-                    selection: model.codec
-                ) { model.setCodec($0) }
-            }
-            Text("Reconnect after changing").ntLabel(NTColor.disabled)
         }
     }
 

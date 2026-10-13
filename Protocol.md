@@ -193,3 +193,15 @@ Notes:
 ## Seen but not decoded
 
 - `C017`, `C04C`.
+
+### Codec (`C029` / `F01C`) — verified, but not exposed on macOS
+
+`F01C [2]` selects LDAC and `C029` reads it back (`02`), and the link survives the change (observed on this
+headphone). It has no audible effect on a Mac, though: macOS only plays SBC and AAC over A2DP, so the output
+stayed at 44.1 kHz. The app therefore does not offer it.
+
+### Find my headphone (`F002`) — verified
+
+`F002 [06, 01]` makes the headphone ring (side `06` = the single unit), `F002 [06, 00]` stops it. Verified with
+the headphone off the head: it sounds, and the app's 2 s pulse then stops it. There is no read command.
+
