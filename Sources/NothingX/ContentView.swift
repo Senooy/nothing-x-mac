@@ -15,6 +15,7 @@ struct ContentView: View {
             HStack(alignment: .top, spacing: 56) {
                 VStack(alignment: .leading, spacing: 40) {
                     hero
+                    BluetoothPermissionNotice()
                     noiseControl
                     spatialAudio
                     Spacer(minLength: 0)
@@ -67,6 +68,8 @@ struct ContentView: View {
         case .connected: Text("Connected")
         case .connecting: Text("Connecting…")
         case .searching: Text("Searching for headphone")
+        case .permissionPending: Text("Waiting for Bluetooth permission…")
+        case .permissionDenied: Text("Bluetooth access denied")
         }
     }
 

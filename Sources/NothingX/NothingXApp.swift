@@ -103,6 +103,11 @@ struct MenuContent: View {
     var body: some View {
         if model.connection == .connected {
             Text(verbatim: "\(model.deviceName) — \(model.battery.map { "\($0)%" } ?? "…")")
+        } else if model.connection == .permissionPending {
+            Text("Waiting for Bluetooth permission…")
+        } else if model.connection == .permissionDenied {
+            Text("Bluetooth access denied")
+            Button("Open Bluetooth settings") { BluetoothGate.openSettings() }
         } else {
             Text("Headphone not connected")
         }
