@@ -70,6 +70,8 @@ struct WindowConfigurator: NSViewRepresentable {
 @main
 struct NothingXApp: App {
     @State private var model = HeadphoneModel()
+    /// Starts Sparkle at launch (scheduled checks need the updater running).
+    private let updater = Updater.shared
 
     /// Dot-X glyph, drawn as a template so macOS tints it for light and dark menu bars.
     private static var menuBarImage: NSImage {
@@ -115,6 +117,8 @@ struct MenuContent: View {
             Button("Recenter head") { model.recenterHead() }
         }
         Divider()
+        Button("Check for Updates…") { Updater.shared.checkForUpdates() }
+            .disabled(!Updater.shared.canCheckForUpdates)
         Button("Quit") { NSApplication.shared.terminate(nil) }
     }
 }

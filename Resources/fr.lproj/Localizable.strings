@@ -62,3 +62,9 @@
 "No sensor data" = "Pas de données du capteur";
 "Tracking · yaw %+.0f°" = "Suivi · lacet %+.0f°";
 "Recenter head" = "Recentrer la tête";
+"Check for Updates…" = "Rechercher les mises à jour…";
+"Updates" = "Mises à jour";
+"Check automatically" = "Vérifier automatiquement";
+"Version" = "Version";
+"[Check now]" = "[Vérifier]";
+"Unavailable in development builds" = "Indisponible en version de développement";

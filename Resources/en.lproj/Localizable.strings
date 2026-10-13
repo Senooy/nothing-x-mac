@@ -62,3 +62,9 @@
 "No sensor data" = "No sensor data";
 "Tracking · yaw %+.0f°" = "Tracking · yaw %+.0f°";
 "Recenter head" = "Recenter head";
+"Check for Updates…" = "Check for Updates…";
+"Updates" = "Updates";
+"Check automatically" = "Check automatically";
+"Version" = "Version";
+"[Check now]" = "[Check now]";
+"Unavailable in development builds" = "Unavailable in development builds";

@@ -42,3 +42,24 @@ xcrun stapler staple "$DMG"
 spctl --assess --type open --context context:primary-signature --verbose "$DMG"
 shasum -a 256 "$DMG"
 echo "Ready: $DMG"
+
+# Sparkle appcast (EdDSA signature of the final, stapled DMG) and Homebrew cask. The DMG above is final
+# either way; if one of these steps fails, say so loudly, keep going, and exit non-zero at the end.
+BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Resources/Info.plist)
+FAILED=()
+scripts/make-appcast.sh "$DMG" "$VERSION" "$BUILD" || FAILED+=("appcast (scripts/make-appcast.sh)")
+scripts/update-cask.sh "$VERSION" "$DMG" || FAILED+=("cask (scripts/update-cask.sh)")
+
+cat <<EOF
+
+Next steps (not run by this script):
+  git add Casks/nothing-x.rb && git commit -m "Cask: nothing-x $VERSION"
+  gh release create "v$VERSION" "$DMG" build/appcast.xml --repo Senooy/nothing-x-mac --title "Nothing X $VERSION" --notes-file build/release-notes-$VERSION.md
+  # or, if the release already exists:
+  gh release upload "v$VERSION" "$DMG" build/appcast.xml --repo Senooy/nothing-x-mac --clobber
+The appcast must be attached to every release: SUFeedURL points at releases/latest/download/appcast.xml.
+EOF
+if (( ${#FAILED} )); then
+    print -u2 "\n*** RELEASE INCOMPLETE: failed step(s): ${(j:, :)FAILED}. Fix and rerun them by hand. ***"
+    exit 1
+fi
