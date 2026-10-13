@@ -6,6 +6,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 40) {
             Text("Settings").ntLabel()
             NotificationsSettingsSection()
+            UpdateSettingsSection()
             // Add further sections here, one line each.
         }
         .padding(.horizontal, 32)

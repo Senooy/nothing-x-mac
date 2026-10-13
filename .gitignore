@@ -13,3 +13,4 @@ xcuserdata/
 scratch/
 *.ips
 .swiftpm/
+.claude/
