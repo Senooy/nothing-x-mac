@@ -146,7 +146,7 @@
 "Connected. Battery, noise control and the rest are live." = "Connecté. La batterie, la réduction de bruit et le reste répondent en direct.";
 "Two optional alerts, delivered by macOS. Change them any time in Settings." = "Deux alertes facultatives, remises par macOS. Modifiables à tout moment dans Réglages.";
 "[Not now]" = "[Pas maintenant]";
-"Under Spatial audio, Mac anchor turns what the Mac plays into sound fixed in front of you. It follows your head with the headphone’s motion sensor, like AirPods on a Mac." = "Sous Audio spatial, Mac anchor transforme ce que le Mac joue en un son fixé devant vous. Il suit votre tête grâce au capteur de mouvement du casque, comme des AirPods sur un Mac.";
+"Under Spatial audio, Mac anchor turns what the Mac plays into sound fixed in front of you. It follows your head with the headphone’s motion sensor, like AirPods on a Mac." = "Sous Audio spatial, le mode Ancré au Mac transforme ce que le Mac joue en un son fixé devant vous. Il suit votre tête grâce au capteur de mouvement du casque, comme des AirPods sur un Mac.";
 "The first time you switch it on, macOS asks to allow System Audio Recording. Nothing is captured before that." = "À la première activation, macOS demande l’autorisation d’enregistrer l’audio du système. Rien n’est capturé avant cela.";
 "[Got it]" = "[Compris]";
 "Ready." = "Prêt.";
@@ -155,9 +155,11 @@
 "Settings ⌘," = "Réglages ⌘,";
 "Notifications and updates." = "Notifications et mises à jour.";
 "Recenter" = "Recentrer";
-"In Spatial audio and the menu bar, when the Mac anchor drifts." = "Dans Audio spatial et la barre des menus, si Mac anchor dérive.";
-"This tour: Settings › Show Welcome." = "Cette visite : Réglages › Afficher la bienvenue.";
+"In Spatial audio and the menu bar, when the Mac anchor drifts." = "Dans Audio spatial et la barre des menus, si le son ancré au Mac dérive.";
 "[Start]" = "[Commencer]";
 "Show Welcome…" = "Afficher la bienvenue…";
-"[Show Welcome…]" = "[Afficher la bienvenue…]";
-"Replay the first-launch tour." = "Rejouer la visite du premier lancement.";
+"[Allow]" = "[Autoriser]";
+"First-launch tour" = "Visite du premier lancement";
+"Replay it any time." = "Rejouable à tout moment.";
+"[Show]" = "[Afficher]";
+"This tour: Settings › Welcome." = "Cette visite : Réglages › Bienvenue.";

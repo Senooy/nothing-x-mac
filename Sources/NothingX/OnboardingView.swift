@@ -74,7 +74,7 @@ struct OnboardingView: View {
         .onChange(of: model.connection, initial: true) { forwardConnection() }
         .onChange(of: model.linkStarted) { forwardConnection() }
         .onChange(of: flow.linkShouldRun, initial: true) {
-            if flow.linkShouldRun { model.startLink() }
+            if flow.linkShouldRun { startLinkLater() }
         }
         .onChange(of: flow.autoAdvances, initial: true) {
             if flow.autoAdvances { scheduleNext(from: .bluetooth) } else { cancelBeat() }
@@ -85,14 +85,24 @@ struct OnboardingView: View {
         }
         .onChange(of: flow.outcome) {
             guard let outcome = flow.outcome else { return }
-            model.startLink()
             OnboardingController.shared.finish(outcome)
+            startLinkLater()
         }
         .onDisappear {
             cancelBeat()
             notificationRequest?.cancel()
             notificationRequest = nil
+            // Window closed mid-tour: the menu bar item must still work. The tour restarts at Welcome,
+            // re-seeded from the current gate, when the window comes back.
+            if flow.outcome == nil { startLinkLater() }
         }
+    }
+
+    /// Starts the link on the next main-actor turn: `startLink()` changes `model.connection` synchronously,
+    /// which must not happen during a view update.
+    private func startLinkLater() {
+        let model = model
+        Task { @MainActor in model.startLink() }
     }
 
     // MARK: Top bar
@@ -112,7 +122,23 @@ struct OnboardingView: View {
 
     // MARK: Hero
 
-    @ViewBuilder private var hero: some View {
+    /// What the hero shows; a change cross-fades it.
+    private var heroKey: String {
+        if flow.step == .welcome { return "welcome" }
+        if flow.step == .connect, model.connection == .connected { return "battery-\(model.battery ?? -1)" }
+        return "step-\(flow.step.rawValue)"
+    }
+
+    private var hero: some View {
+        ZStack(alignment: .bottomLeading) {
+            heroContent
+                .id(heroKey)
+                .transition(.opacity)
+        }
+        .animation(.easeOut(duration: 0.3), value: heroKey)
+    }
+
+    @ViewBuilder private var heroContent: some View {
         if flow.step == .welcome {
             DotXMark()
         } else if flow.step == .connect, model.connection == .connected {
@@ -185,7 +211,7 @@ struct OnboardingView: View {
         switch service.authorization {
         case .notDetermined:
             secondary("[Not now]") { next(from: .notifications) }
-            primary("[Allow notifications]") { requestNotifications() }
+            primary("[Allow]") { requestNotifications() }
                 .disabled(requestingNotifications)
                 .opacity(requestingNotifications ? 0.4 : 1)
         case .denied:

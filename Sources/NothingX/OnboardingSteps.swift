@@ -153,7 +153,7 @@ struct NotificationsStep: View {
     private let service = NotificationService.shared
 
     /// On/Off bound to the stored preference. Unlike Settings, switching on does not ask for permission:
-    /// the explicit `[Allow notifications]` button does.
+    /// the explicit `[Allow]` button of this step does.
     private func onOff(_ value: Bool, _ set: @escaping (Bool) -> Void) -> some View {
         Segmented(options: [(true, String(localized: "On")), (false, String(localized: "Off"))],
                   selection: value) { set($0) }
@@ -212,7 +212,7 @@ struct DoneStep: View {
                 row("Settings ⌘,", "Notifications and updates.")
                 row("Recenter", "In Spatial audio and the menu bar, when the Mac anchor drifts.")
             }
-            Text("This tour: Settings › Show Welcome.").ntLabel(NTColor.disabled)
+            Text("This tour: Settings › Welcome.").ntLabel(NTColor.disabled)
         }
     }
 

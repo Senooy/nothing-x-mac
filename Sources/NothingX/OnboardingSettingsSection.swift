@@ -7,15 +7,13 @@ struct OnboardingSettingsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             SectionHeader(title: "Welcome")
-            SettingsRow(title: "Show Welcome…", detail: "Replay the first-launch tour.") {
+            SettingsRow(title: "First-launch tour", detail: "Replay it any time.") {
                 HStack {
                     Spacer(minLength: 0)
                     Button {
                         OnboardingController.shared.replay { openWindow(id: "main") }
                     } label: {
-                        Text("[Show Welcome…]").ntLabel(NTColor.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
+                        Text("[Show]").ntLabel(NTColor.primary)
                     }
                     .buttonStyle(.plain)
                 }

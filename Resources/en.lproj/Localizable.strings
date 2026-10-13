@@ -156,8 +156,10 @@
 "Notifications and updates." = "Notifications and updates.";
 "Recenter" = "Recenter";
 "In Spatial audio and the menu bar, when the Mac anchor drifts." = "In Spatial audio and the menu bar, when the Mac anchor drifts.";
-"This tour: Settings › Show Welcome." = "This tour: Settings › Show Welcome.";
 "[Start]" = "[Start]";
 "Show Welcome…" = "Show Welcome…";
-"[Show Welcome…]" = "[Show Welcome…]";
-"Replay the first-launch tour." = "Replay the first-launch tour.";
+"[Allow]" = "[Allow]";
+"First-launch tour" = "First-launch tour";
+"Replay it any time." = "Replay it any time.";
+"[Show]" = "[Show]";
+"This tour: Settings › Welcome." = "This tour: Settings › Welcome.";
