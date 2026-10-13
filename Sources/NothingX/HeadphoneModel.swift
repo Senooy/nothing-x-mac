@@ -41,6 +41,7 @@ final class HeadphoneModel {
         set { UserDefaults.standard.set(newValue, forKey: "anchor.enabled") }
     }
 
+    private let notifier = NotificationCoordinator()
     private let transport = BluetoothLink()
     private var opCounter: UInt8 = 0
     private var pending: [UInt8: CheckedContinuation<[UInt8]?, Never>] = [:]
@@ -86,6 +87,7 @@ final class HeadphoneModel {
                 if anchorWanted { await startMacAnchor() }
             }
         }
+        notifier.connectionChanged(connected: connection == .connected, deviceName: deviceName)
     }
 
     private func handle(_ frame: Frame) {
@@ -154,6 +156,7 @@ final class HeadphoneModel {
         guard let p = await request(NT.Cmd.readBattery), p.count >= 3 else { return }
         battery = Int(p[2] & 0x7F)
         charging = p[2] & 0x80 != 0
+        notifier.batteryChanged(level: battery, charging: charging, deviceName: deviceName)
     }
 
     func refreshANC() async {

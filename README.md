@@ -36,6 +36,7 @@ directly from macOS.
 | Custom 8-band equalizer, saved locally | working |
 | Gestures: view and remap the customizable controls, restore the original table | experimental |
 | Menu bar item: battery and quick noise-control switching | working |
+| Notifications: low battery (20 % or 10 %) and headphone connected, configured in Settings (⌘,) | working |
 | English UI, French when macOS is set to French | working |
 | Low-latency mode, dual connection, codec, in-ear detection | not yet mapped |
 
@@ -102,6 +103,8 @@ To force English on a French system:
 | `Sources/NothingX/BluetoothLink.swift` | IOBluetooth transport: finds the headphone, resolves the channel via SDP, reconnects |
 | `Sources/NothingX/HeadphoneModel.swift` | observable state, request/response matching, settings logic |
 | `Sources/NothingX/ContentView.swift`, `Theme.swift`, `BandSlider.swift` | Nothing-style UI |
+| `Sources/NothingX/NotificationService.swift`, `NotificationRules.swift` | notification permission and posting; pure threshold / hysteresis rules |
+| `Sources/NothingX/SettingsView.swift` | Settings window (⌘,), one view per section |
 | `Resources/` | `Info.plist`, `en` / `fr` localizations, app icon and menu bar glyph |
 | `tools/make-icons.swift` | regenerates `AppIcon.icns` and the menu bar glyph (the "Dot X" icon) |
 
@@ -115,6 +118,21 @@ effect is not applied twice. Look at the Mac and press **Recenter** (also in the
 drifts. Yaw drift is also cancelled slowly by itself, but only while your head is still and close to the
 Mac direction, so looking at another screen never drags the anchor along. If the app quits or crashes, the normal system audio
 comes back on its own.
+
+## Notifications and Settings
+
+Open **Settings** with ⌘, or from the menu bar item.
+
+- **Low battery**: on by default. Choose 20 % or 10 %. The alert fires once when the level reaches the
+  threshold while the headphone is not charging. It arms again only after the battery climbs more than
+  10 points above the threshold or the headphone is charged, so it never repeats on every reading.
+- **Headphone connected**: off by default. Fires when the headphone connects, but not for the connection
+  made in the first 8 seconds after the app launches.
+- The app never asks for notification permission by itself at launch. Permission is requested when you
+  switch an alert on (or from the onboarding). If macOS has it blocked, Settings says so and offers a
+  button that opens System Settings > Notifications.
+- Choices are stored in `UserDefaults` (`notify.connected`, `notify.lowBattery`,
+  `notify.lowBattery.threshold`). Notifications need the packaged `.app`; `swift run` has none.
 
 ## Known limits
 
