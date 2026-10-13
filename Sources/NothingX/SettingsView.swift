@@ -7,6 +7,7 @@ struct SettingsView: View {
             Text("Settings").ntLabel()
             NotificationsSettingsSection()
             UpdateSettingsSection()
+            OnboardingSettingsSection()
             // Add further sections here, one line each.
         }
         .padding(.horizontal, 32)

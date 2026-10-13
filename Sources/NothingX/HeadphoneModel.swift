@@ -47,15 +47,16 @@ final class HeadphoneModel {
     private var pending: [UInt8: CheckedContinuation<[UInt8]?, Never>] = [:]
     private var batteryTimer: Timer?
     private var eqCommit: Task<Void, Never>?
+    private(set) var linkStarted = false
 
-    init() {
+    init(startLink: Bool = true) {
         transport.onState = { [weak self] state, name in
             MainActor.assumeIsolated { self?.linkChanged(state, name) }
         }
         transport.onFrame = { [weak self] frame in
             MainActor.assumeIsolated { self?.handle(frame) }
         }
-        transport.start()
+        if startLink { self.startLink() }
         // The headphone can be changed from its own buttons or another device: poll the
         // cheap settings every few seconds, the battery less often.
         batteryTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
@@ -64,6 +65,13 @@ final class HeadphoneModel {
     }
 
     // MARK: Connection
+
+    /// Starts the Bluetooth transport once. Deferred by the onboarding so the macOS prompt appears on its Bluetooth step.
+    func startLink() {
+        guard !linkStarted else { return }
+        linkStarted = true
+        transport.start()
+    }
 
     private func linkChanged(_ state: BluetoothLink.State, _ name: String?) {
         if let name { deviceName = name }
