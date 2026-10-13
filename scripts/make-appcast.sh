@@ -6,6 +6,7 @@
 #   e.g. scripts/make-appcast.sh build/NothingX-0.2.2.dmg 0.2.2 4
 # SPARKLE_BIN overrides the folder holding sign_update (default: the SwiftPM artifact bundle).
 # OUT overrides the output path (default: build/appcast.xml).
+# DOWNLOAD_BASE overrides the folder URL of the DMG (local update tests, e.g. http://localhost:8000).
 set -euo pipefail
 ROOT="${0:A:h:h}"
 (( $# == 3 )) || { echo "usage: $0 <dmg> <version> <build>" >&2; exit 64; }
@@ -27,7 +28,7 @@ SIGNATURE=$("$SIGN_UPDATE" -p "$DMG")
 LENGTH=$(stat -f %z "$DMG")
 PUBDATE=$(LC_ALL=C date -u "+%a, %d %b %Y %H:%M:%S +0000")
 REPO="https://github.com/Senooy/nothing-x-mac"
-URL="$REPO/releases/download/v$VERSION/NothingX-$VERSION.dmg"
+URL="${DOWNLOAD_BASE:-$REPO/releases/download/v$VERSION}/NothingX-$VERSION.dmg"
 NOTES="$REPO/releases/tag/v$VERSION"
 
 OUT="${OUT:-$ROOT/build/appcast.xml}"
