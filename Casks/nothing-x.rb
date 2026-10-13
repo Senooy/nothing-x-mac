@@ -1,6 +1,6 @@
 cask "nothing-x" do
-  version "0.2.1"
-  sha256 "ff7a89eac6078188e21f3cd6a160fe97427c72b8d5e3d3006c92eb214636b8ce"
+  version "0.3.0"
+  sha256 "5c06397e942b9457422efb4a1b5f58aa9744dab5b78c1cd495901eb03197eee1"
 
   url "https://github.com/Senooy/nothing-x-mac/releases/download/v#{version}/NothingX-#{version}.dmg"
   name "Nothing X"
