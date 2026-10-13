@@ -169,8 +169,8 @@ Open **Settings** with ⌘, or from the menu bar item.
 
 **First launch**: a short tour in the main window explains the Bluetooth permission before macOS asks for it,
 waits for the headphone, offers the two notifications and introduces the Mac anchor. Every step can be skipped
-(**[Skip]** or Esc), and a skipped tour is not shown again. Replay it with **Show Welcome…** in Settings or the
-menu bar item. To see it again at launch: `defaults delete dev.younes.NothingX onboarding.completed`.
+(**[Skip]** or Esc), and a skipped tour is not shown again. Replay it from Settings (Welcome › Show) or with
+**Show Welcome…** in the menu bar item. To see it again at launch: `defaults delete dev.younes.NothingX onboarding.completed`.
 
 - **Low battery**: on by default. Choose 20 % or 10 %. The alert fires once when the level reaches the
   threshold while the headphone is not charging. It arms again only after the battery climbs more than
