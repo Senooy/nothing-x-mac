@@ -32,6 +32,9 @@ final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
     private var parser = FrameParser()
     private var timer: Timer?
     private var busy = false
+    /// When the current connection attempt started, to give up on one that never completes.
+    private var attemptStarted: Date?
+    private let attemptTimeout: TimeInterval = 12
 
     private var gate: BluetoothGate?
     private var watcher: BluetoothPermissionWatcher?
@@ -106,21 +109,36 @@ final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
 
     /// Cherche un casque Nothing appairé et connecté, puis résout le canal RFCOMM par SDP.
     private func tick() {
-        guard gate == .allowed, channel == nil, !busy else { return }
+        guard gate == .allowed else { return }
+        if busy {
+            // The headphone sometimes accepts the Bluetooth link but never opens the control channel
+            // (e.g. right after a codec change). Abandon the attempt so the next tick can retry.
+            if let started = attemptStarted, Date().timeIntervalSince(started) > attemptTimeout { abortAttempt() }
+            return
+        }
+        guard channel == nil else { return }
         let paired = (IOBluetoothDevice.pairedDevices() as? [IOBluetoothDevice]) ?? []
         guard let dev = paired.first(where: { ($0.name ?? "").localizedCaseInsensitiveContains("nothing") && $0.isConnected() }) else {
             state = .searching
             return
         }
         busy = true
+        attemptStarted = Date()
         device = dev
         deviceName = dev.name
         state = .connecting
         if dev.performSDPQuery(self) != kIOReturnSuccess { fail() }
     }
 
+    private func abortAttempt() {
+        channel?.close()
+        channel = nil
+        fail()
+    }
+
     private func fail() {
         busy = false
+        attemptStarted = nil
         channel = nil
         parser.reset()
         if gate == .allowed { state = .searching }
@@ -146,7 +164,10 @@ final class BluetoothLink: NSObject, IOBluetoothRFCOMMChannelDelegate {
     }
 
     func rfcommChannelOpenComplete(_ rfcommChannel: IOBluetoothRFCOMMChannel!, status error: IOReturn) {
+        // A late completion for an attempt we already abandoned must not revive the link.
+        guard rfcommChannel === channel else { rfcommChannel?.close(); return }
         busy = false
+        attemptStarted = nil
         if gate != .allowed {
             // Access revoked while the channel was opening.
             rfcommChannel?.close()
