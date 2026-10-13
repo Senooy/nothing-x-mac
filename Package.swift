@@ -9,6 +9,12 @@ let package = Package(
             name: "NothingX",
             path: "Sources/NothingX",
             swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .testTarget(
+            name: "NothingXTests",
+            dependencies: ["NothingX"],
+            path: "Tests/NothingXTests",
+            swiftSettings: [.swiftLanguageMode(.v5)]
         )
     ]
 )

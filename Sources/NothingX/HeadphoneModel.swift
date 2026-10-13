@@ -309,6 +309,57 @@ final class HeadphoneModel {
         commitCustomEQ()
     }
 
+    // MARK: EQ files (AutoEq / Equalizer APO)
+
+    /// Import warnings, shown under the EQ buttons (`status` is red unless it is "[OK]").
+    var eqImportNote = ""
+    private var eqNoteClear: Task<Void, Never>?
+
+    /// Applies a parametric EQ file to the custom curve (sent to the headphone and read back, like a
+    /// manual edit) and returns the warnings. An empty-handed import changes nothing.
+    @discardableResult
+    func importEQ(from text: String) -> [String] {
+        guard let current = eqProfile else {
+            report(false, String(localized: "Not connected"))
+            return []
+        }
+        guard spatial?.on != true else {
+            report(false, String(localized: "EQ is disabled while spatial audio is on"))
+            return []
+        }
+        let parsed = EQInterchange.parse(text)
+        guard !parsed.filters.isEmpty else {
+            report(false, String(localized: "No EQ filters found"))
+            setEQImportNote(parsed.warnings)
+            return parsed.warnings
+        }
+        let mapping = EQInterchange.map(parsed, base: current)
+        withAnimation(.easeOut(duration: 0.3)) { eqProfile = mapping.profile }
+        commitCustomEQ()
+        setEQImportNote(mapping.warnings)
+        return mapping.warnings
+    }
+
+    /// The current custom curve as `ParametricEQ.txt`, or nil until it has been read.
+    func exportEQ() -> String? {
+        eqProfile.map(EQInterchange.export)
+    }
+
+    /// For file read / write failures in the view.
+    func reportEQFile(ok: Bool, _ what: String) { report(ok, what) }
+
+    private func setEQImportNote(_ warnings: [String]) {
+        let shown = warnings.prefix(3).joined(separator: "\n")
+        let more = warnings.count > 3 ? "\n" + String(format: String(localized: "+ %d more"), warnings.count - 3) : ""
+        eqImportNote = shown + more
+        eqNoteClear?.cancel()
+        guard !warnings.isEmpty else { return }
+        eqNoteClear = Task {
+            try? await Task.sleep(for: .seconds(12))
+            if !Task.isCancelled { eqImportNote = "" }
+        }
+    }
+
     // MARK: Spatial audio
 
     /// The firmware refuses spatial audio alongside bass boost or a non-flat EQ
