@@ -47,6 +47,9 @@ final class HeadphoneModel {
     private var pending: [UInt8: CheckedContinuation<[UInt8]?, Never>] = [:]
     private var batteryTimer: Timer?
     private var eqCommit: Task<Void, Never>?
+    private var eqCommitRunning = false
+    private var eqCommitQueued = false
+    private var eqEditedAt = Date.distantPast
     private(set) var linkStarted = false
 
     init(startLink: Bool = true) {
@@ -147,7 +150,7 @@ final class HeadphoneModel {
         pollTick += 1
         await refreshANC()
         if let p = await request(NT.Cmd.readSpatial), let s = SpatialState.decode(p) { spatial = s }
-        if let p = await request(NT.Cmd.readEQPreset), let v = p.first, v != eqPreset { eqPreset = v; await refreshEQ() }
+        if !eqBusy, let p = await request(NT.Cmd.readEQPreset), let v = p.first, v != eqPreset { eqPreset = v; await refreshEQ() }
         if pollTick % 6 == 0 { await refreshBattery() }
         if pollTick % 6 == 3, deviceWrites == 0, !findPlaying { await refreshDeviceSettings() }   // 5 cheap reads, every ~30 s
     }
@@ -279,6 +282,8 @@ final class HeadphoneModel {
     func selectPreset(_ preset: EQPreset) {
         guard eqProfile != nil else { return }
         eqCommit?.cancel()
+        eqCommit = nil
+        eqEditedAt = Date()
         let gains = preset.gains ?? userCustomGains
         showGains(gains)
         Task {
@@ -298,21 +303,38 @@ final class HeadphoneModel {
     /// Edits a band locally; the write to the headphone is deferred while dragging.
     func setBandGain(_ index: Int, _ gain: Float) {
         guard eqProfile?.bands.indices.contains(index) == true else { return }
+        eqEditedAt = Date()
         eqProfile?.bands[index].gain = gain
     }
 
-    /// Sends the current bars as the Custom curve (called when a drag ends).
+    /// True while the user is adjusting the bars or a commit is on its way: nothing may overwrite them.
+    private var eqBusy: Bool {
+        eqCommitRunning || eqCommit != nil || Date().timeIntervalSince(eqEditedAt) < 3
+    }
+
+    /// Sends the current bars as the Custom curve (called when a drag ends). Commits never overlap: edits
+    /// made while one is in flight are sent right after it, always with the latest bars.
     func commitCustomEQ() {
-        guard let eq = eqProfile else { return }
-        userCustomGains = eq.bands.map(\.gain)
+        guard let current = eqProfile else { return }
+        userCustomGains = current.bands.map(\.gain)
+        eqEditedAt = Date()
+        if eqCommitRunning { eqCommitQueued = true; return }
         eqCommit?.cancel()
         eqCommit = Task {
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
-            var ok = Self.acked(await request(NT.Cmd.setCustomEQ, eq.encode()))
-            if ok { ok = Self.acked(await request(NT.Cmd.setEQPreset, [EQPreset.deviceCustom, 0])) }
-            await refreshEQ(keepBars: true)
-            report(ok && eqPreset == EQPreset.deviceCustom, String(localized: "Custom EQ"))
+            eqCommitRunning = true
+            repeat {
+                eqCommitQueued = false
+                guard let eq = eqProfile else { break }
+                var ok = Self.acked(await request(NT.Cmd.setCustomEQ, eq.encode()))
+                if ok { ok = Self.acked(await request(NT.Cmd.setEQPreset, [EQPreset.deviceCustom, 0])) }
+                await refreshEQ(keepBars: true)
+                report(ok && eqPreset == EQPreset.deviceCustom, String(localized: "Custom EQ"))
+            } while eqCommitQueued
+            eqCommitRunning = false
+            eqCommit = nil
+            eqEditedAt = Date()
         }
     }
 

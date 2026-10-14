@@ -12,6 +12,7 @@ struct ContentView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 34)       // sits below the traffic-light buttons
                 .frame(height: 64, alignment: .top)
+                .background(WindowDragHandle())
             HStack(alignment: .top, spacing: 56) {
                 VStack(alignment: .leading, spacing: 40) {
                     hero

@@ -50,6 +50,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, 32)
                 .padding(.top, 34)       // sits below the traffic-light buttons
                 .frame(height: 64, alignment: .top)
+                .background(WindowDragHandle())
             VStack(alignment: .leading, spacing: 28) {
                 hero.frame(height: 120, alignment: .bottomLeading)
                 ZStack(alignment: .topLeading) {

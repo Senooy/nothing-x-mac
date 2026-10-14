@@ -1,6 +1,17 @@
 import SwiftUI
 import AppKit
 
+/// A view that moves the window when dragged: put it behind a title-like area now that the whole window
+/// background is no longer draggable.
+struct WindowDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class DragView: NSView {
+        override func mouseDown(with event: NSEvent) { window?.performDrag(with: event) }
+    }
+}
+
 /// Blends the window chrome into the content: the title bar is transparent over a black window, so it
 /// reads as black. Content is NOT extended under it, which keeps the traffic-light buttons on top.
 struct WindowConfigurator: NSViewRepresentable {
@@ -24,7 +35,9 @@ struct WindowConfigurator: NSViewRepresentable {
             window.styleMask.formUnion([.titled, .closable, .miniaturizable, .fullSizeContentView])
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
-            window.isMovableByWindowBackground = true
+            // Not movable by background: custom drag controls (the EQ sliders) would otherwise drag the whole
+            // window along with the value. The top bar uses `WindowDragHandle` instead.
+            window.isMovableByWindowBackground = false
             window.backgroundColor = .black
             raiseTrafficLights(in: window)
             // SwiftUI can re-order the window's views; keep the buttons on top.
