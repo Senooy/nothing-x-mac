@@ -109,7 +109,7 @@ sandboxed** (RFCOMM access).
 `Casks/nothing-x.rb` (`scripts/update-cask.sh`) and prints the `gh release` command that attaches the DMG
 **and** `appcast.xml` to the release.
 
-Unit tests (EQ file parsing): `swift test`.
+Unit tests (EQ files, head pose filter, onboarding, notifications, software EQ): `swift test`.
 
 To force English on a French system:
 `open -n "build/Nothing X.app" --args -AppleLanguages "(en)"`.
@@ -178,7 +178,8 @@ headphone's USB output. The presets and sliders work without the Bluetooth link,
 Custom preset, and EQ files import into it.
 
 - **Headroom**: the EQ's global gain is lowered by the largest band boost (a +6 dB bass curve plays 6 dB
-  quieter overall, the bass staying at 0 dB), so boosted curves cannot clip. Cuts cost no level.
+  quieter overall), so no single boosted band can clip. Neighbouring boosts overlap, so on full-scale material
+  the summed curve can still exceed 0 dB by a dB or two between them. Cuts cost no level.
 - Slider moves apply live; gain changes are ramped (1 dB per 10 ms) so preset jumps do not click.
 - Use the Mac's volume keys. Unplugging the cable stops the equalizer and releases the tap, so system audio
   comes back on its own; it starts again on the next plug if it was on.
