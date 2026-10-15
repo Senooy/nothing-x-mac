@@ -41,6 +41,7 @@ directly from macOS.
 | English UI, French when macOS is set to French | working |
 | Device settings: low latency, dual connection, adaptive ANC, in-ear detection (write and read-back checked on the headphone) | working |
 | Find my headphone (2 s pulse, asks you to take the headphone off first) | working |
+| Wired (USB) mode: the app notices the cable ("Wired (USB)" in the window and the menu bar) and can make the headphone the Mac's output while plugged in | detection checked on the headphone, output switching in testing |
 
 Settings changed from the headphone's own buttons are picked up within a few seconds, and the app
 reconnects by itself when the headphone comes back.
@@ -162,6 +163,26 @@ effect is not applied twice. Look at the Mac and press **Recenter** (also in the
 drifts. Yaw drift is also cancelled slowly by itself, but only while your head is still and close to the
 Mac direction, so looking at another screen never drags the anchor along. If the app quits or crashes, the normal system audio
 comes back on its own.
+
+## Wired mode
+
+Plugging the USB-C cable makes the headphone **turn Bluetooth off by design** (Nothing says so on its support
+page), and the Mac cannot reopen the link while the cable is in. The app has no way to talk to the headphone
+then, so in wired mode:
+
+- **Works**: the app detects the headphone on USB (vendor `0xBE58`, product "Nothing Headphone (1)") and shows
+  **Wired (USB)** in the window, the menu bar and the first-launch tour, with the serial number read from the
+  USB descriptor. The headphone's physical buttons keep working, and it plays as a normal 2-channel, 48 kHz USB
+  audio device.
+- **Does not work**: noise control, battery, equalizer presets and curves, gestures, device settings, spatial
+  audio and Mac anchor (it needs the Bluetooth head-tracking stream). The controls are dimmed and a notice
+  explains why; unplug the cable and the app reconnects over Bluetooth.
+- **Optional**: Settings › Wired mode › *Use as the Mac's output* (off by default). When on, the app makes the
+  headphone the Mac's sound output on plug and gives the previous output back on unplug. If you pick another
+  output yourself while it is plugged in, the app leaves your choice alone. macOS does not switch to a USB
+  headset by itself, hence the option. The app only changes the system output while this is on.
+- Detection uses IOKit notifications (no polling); the output switch uses Core Audio. Neither needs a new
+  permission.
 
 ## Notifications and Settings
 

@@ -190,6 +190,24 @@ Notes:
   ("Take the headphone off first"), sends `on`, waits 2 s and always sends `off` (also on Stop). `side` `06`
   is inferred from battery/wear/gestures; there is no read to confirm the state, so only the ACK is checked.
 
+## Wired (USB) mode — verified
+
+Plugging in the USB-C cable makes the headphone **drop Bluetooth entirely** (stated on Nothing's support page;
+checked here: the classic link cannot be reopened from the Mac and a 25 s BLE scan finds no Nothing device).
+The RFCOMM protocol above is therefore unavailable while the cable is in. There is no serial port and no
+vendor channel on USB, so there is nothing to talk to.
+
+- USB identity: vendor id `48728` (`0xBE58`, "Nothing Tech"), product id `820` (`0x0334`), product string
+  "Nothing Headphone (1)". `USB Serial Number` equals the serial read over Bluetooth (device info key 4).
+- Composite device: USB audio (control interface + 2 streaming interfaces) and one HID interface
+  (consumer / telephony keys).
+- Core Audio lists two devices named "Nothing Headphone (1)" with transport USB: output 2 ch @ 48 kHz and
+  input 1 ch @ 48 kHz. In Bluetooth mode the same name has transport Bluetooth (output 44.1 kHz, 16 kHz HFP
+  input). macOS does not make the USB device the default output by itself.
+- The app matches on the IOKit class `IOUSBHostDevice` with `idVendor = 0xBE58` and a product string containing
+  "Headphone" (`USBHeadphoneMonitor`), and finds the output by `kAudioDevicePropertyTransportType ==
+  kAudioDeviceTransportTypeUSB` plus the name (`AudioDevices.usbOutputDevice`).
+
 ## Seen but not decoded
 
 - `C017`, `C04C`.

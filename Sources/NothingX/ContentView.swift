@@ -17,6 +17,7 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 40) {
                     hero
                     BluetoothPermissionNotice()
+                    WiredNotice()
                     noiseControl
                     spatialAudio
                     Spacer(minLength: 0)
@@ -60,7 +61,7 @@ struct ContentView: View {
                     .fill(connected ? NTColor.display : Color.clear)
                     .overlay(Circle().stroke(connected ? Color.clear : NTColor.disabled, lineWidth: 1))
                     .frame(width: 7, height: 7)
-                statusText.ntLabel(connected ? NTColor.primary : NTColor.disabled)
+                (model.isWired ? Text("Wired (USB)") : statusText).ntLabel(connected ? NTColor.primary : NTColor.disabled)
             }
         }
     }
@@ -158,6 +159,9 @@ struct ContentView: View {
             if spatialChoice == .mac {
                 macAnchorControls
             }
+            if model.isWired {
+                Text("Mac anchor needs the Bluetooth link.").ntLabel(NTColor.disabled)
+            }
         }
         .disabled(!connected || state == nil)
         .opacity(connected ? 1 : 0.4)
@@ -189,6 +193,8 @@ struct ContentView: View {
     }
 
     // MARK: Equalizer
+    // Wired hook: `model.isWired` is true while the headphone is plugged in by USB (this section is then dimmed
+    // like every other control). The software equalizer for wired mode attaches here.
 
     private var equalizer: some View {
         VStack(alignment: .leading, spacing: 24) {
