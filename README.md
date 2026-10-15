@@ -176,8 +176,9 @@ gestures and device settings. The top bar reads **Wired (USB)**; the physical bu
 headphone itself.
 
 **The equalizer keeps working**, in the same place with the same presets and sliders: while wired it drives a
-software equalizer run by the Mac. There is no switch. It runs only when the curve changes the sound and stops
-on a flat curve, like the headphone's own EQ. The same Core Audio process tap as the Mac anchor captures what the
+software equalizer run by the Mac. There is no switch: it starts by itself as soon as the curve changes the
+sound, like the headphone's own EQ, and then stays up until you unplug (stopping it mid-music would glitch, and a
+flat curve changes nothing). The same Core Audio process tap as the Mac anchor captures what the
 Mac plays (muted at the source while it runs, the app's own output excluded), an 8-band `AVAudioUnitEQ`
 (55 Hz … 13.2 kHz, peaking, Q = 1, ±12 dB) equalizes it, and the result goes to the headphone's USB output. The
 curve is saved locally (`UserDefaults`, `softeq.profile`); **Custom** is the same saved curve as the headphone's
@@ -188,7 +189,7 @@ Custom preset, and EQ files import into it. It needs System Audio Recording perm
   the summed curve can still exceed 0 dB by a dB or two between them. Cuts cost no level.
 - Slider moves apply live; gain changes are ramped (1 dB per 10 ms) so preset jumps do not click.
 - Use the Mac's volume keys. Unplugging the cable stops the equalizer and releases the tap, so system audio comes
-  back on its own; it starts again on the next plug if the saved curve is not flat.
+  back on its own; on the next plug it starts again if the saved curve is not flat.
 - The Mac anchor needs the Bluetooth sensor stream, so it is not available while wired.
 - **Optional**: Settings › Wired mode › *Use as the Mac's output* (off by default). When on, the app makes the
   headphone the Mac's sound output on plug and gives the previous output back on unplug. If you pick another

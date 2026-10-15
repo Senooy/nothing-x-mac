@@ -88,6 +88,7 @@ final class HeadphoneModel {
             for (_, cont) in pending { cont.resume(returning: nil) }
             pending.removeAll()
             battery = nil
+            charging = false
             ancRaw = nil
             eqPreset = nil
             spatial = nil
@@ -590,6 +591,10 @@ final class HeadphoneModel {
         !softwareEQBlocked && softwareEQProfile.bands.contains { abs($0.gain) >= 0.05 }
     }
     private var softwareEQBlocked = false
+
+    /// Once the engine is running it stays up while wired even if the curve goes flat: stopping would pull the
+    /// capture away from under the music and cause an audible glitch, and a flat curve changes nothing.
+    private var softwareEQWanted: Bool { softwareEQEnabled || softwareEQRunning || softwareEQStart != nil }
     private(set) var softwareEQRunning = false
     var softwareEQDetail = ""
     /// The local curve shown and applied while wired (8 bands, 55 Hz … 13.2 kHz, ±12 dB), persisted.
@@ -640,7 +645,7 @@ final class HeadphoneModel {
     func syncSoftwareEQ(allowStop: Bool = true) {
         if !isWired { softwareEQBlocked = false }   // a new plug-in gets a fresh attempt
         let active = softwareEQRunning || softwareEQStart != nil
-        switch SoftwareEQPolicy.action(enabled: softwareEQEnabled, wired: isWired,
+        switch SoftwareEQPolicy.action(enabled: softwareEQWanted, wired: isWired,
                                        macAnchorActive: macAnchored, active: active) {
         case .start: startSoftwareEQ()
         case .stop: if allowStop { stopSoftwareEQ() }
@@ -659,7 +664,7 @@ final class HeadphoneModel {
         softwareEQStart = Task {
             for _ in 0..<10 {
                 guard !Task.isCancelled else { return }
-                guard SoftwareEQPolicy.shouldRun(enabled: softwareEQEnabled, wired: isWired, macAnchorActive: macAnchored) else {
+                guard SoftwareEQPolicy.shouldRun(enabled: softwareEQWanted, wired: isWired, macAnchorActive: macAnchored) else {
                     softwareEQStart = nil
                     softwareEQDetail = ""
                     return
@@ -677,7 +682,7 @@ final class HeadphoneModel {
                         softwareEQBlocked = true
                         softwareEQDetail = ""
                         status = String(format: String(localized: "[ERROR: %@]"), failure)
-                    } else if SoftwareEQPolicy.shouldRun(enabled: softwareEQEnabled, wired: isWired, macAnchorActive: macAnchored) {
+                    } else if SoftwareEQPolicy.shouldRun(enabled: softwareEQWanted, wired: isWired, macAnchorActive: macAnchored) {
                         softwareEQRunning = true
                         softwareEQDetail = String(localized: "Equalizing system audio")
                         eqEngine.setBands(softwareEQProfile.bands)   // pick up edits made while it was starting
