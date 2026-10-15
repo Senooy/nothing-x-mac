@@ -175,3 +175,4 @@
 "Equalizing system audio" = "Égalisation de l’audio système";
 "Waiting for the headphone audio device" = "En attente de la sortie audio du casque";
 "Headphone USB audio device not found" = "Sortie audio USB du casque introuvable";
+"Waiting for audio permission…" = "Attente de l'autorisation audio…";

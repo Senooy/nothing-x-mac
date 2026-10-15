@@ -175,3 +175,4 @@
 "Equalizing system audio" = "Equalizing system audio";
 "Waiting for the headphone audio device" = "Waiting for the headphone audio device";
 "Headphone USB audio device not found" = "Headphone USB audio device not found";
+"Waiting for audio permission…" = "Waiting for audio permission…";

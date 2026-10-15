@@ -493,14 +493,19 @@ final class HeadphoneModel {
         // Start the sensor stream and wait for the first sample so "forward" is the current pose.
         headPose.reset()
         _ = await request(NT.Cmd.startHeadStream)
-        do {
-            try spatialEngine.start(outputDeviceNameContaining: "nothing")
-        } catch {
+        // Off the main thread: Core Audio blocks until the System Audio Recording prompt is answered.
+        anchorDetail = String(localized: "Waiting for audio permission…")
+        let engine = spatialEngine
+        let failure: String? = await Task.detached(priority: .userInitiated) {
+            do { try engine.start(outputDeviceNameContaining: "nothing"); return nil } catch { return error.localizedDescription }
+        }.value
+        if let failure {
             anchorWanted = false
             anchorDetail = ""
-            status = String(format: String(localized: "[ERROR: %@]"), error.localizedDescription)
+            status = String(format: String(localized: "[ERROR: %@]"), failure)
             return
         }
+        guard connection == .connected, anchorWanted else { engine.stop(); anchorDetail = ""; return }   // changed while waiting
         macAnchored = true
         anchorDetail = String(localized: "Capturing system audio")
         // The sensor stream sometimes does not start on the first request: ask again until samples arrive.
@@ -663,15 +668,25 @@ final class HeadphoneModel {
                     return
                 }
                 if let device = AudioDevices.usbOutputDevice(forSoftwareEQ: "nothing") {
-                    do {
-                        try eqEngine.start(device: device, bands: softwareEQProfile.bands)
-                        softwareEQRunning = true
-                        softwareEQDetail = String(localized: "Equalizing system audio")
-                    } catch {
+                    // Core Audio can block for as long as the System Audio Recording prompt is unanswered,
+                    // so the engine is started off the main thread and the window stays responsive.
+                    let engine = eqEngine, bands = softwareEQProfile.bands
+                    softwareEQDetail = String(localized: "Waiting for audio permission…")
+                    let failure: String? = await Task.detached(priority: .userInitiated) {
+                        do { try engine.start(device: device, bands: bands); return nil } catch { return error.localizedDescription }
+                    }.value
+                    if let failure {
                         // Capture refused or routing failed: switch off rather than retry in a loop.
                         softwareEQEnabled = false
                         softwareEQDetail = ""
-                        status = String(format: String(localized: "[ERROR: %@]"), error.localizedDescription)
+                        status = String(format: String(localized: "[ERROR: %@]"), failure)
+                    } else if SoftwareEQPolicy.shouldRun(enabled: softwareEQEnabled, wired: isWired, macAnchorActive: macAnchored) {
+                        softwareEQRunning = true
+                        softwareEQDetail = String(localized: "Equalizing system audio")
+                        eqEngine.setBands(softwareEQProfile.bands)   // pick up edits made while it was starting
+                    } else {
+                        eqEngine.stop()   // turned off or unplugged while the permission prompt was open
+                        softwareEQDetail = ""
                     }
                     softwareEQStart = nil
                     return
