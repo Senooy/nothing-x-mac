@@ -170,3 +170,8 @@
 "Wired mode" = "Mode filaire";
 "Use as the Mac’s output" = "Utiliser comme sortie du Mac";
 "When plugged in by USB, make the headphone the sound output, then give the previous output back when unplugged. Off leaves your output choice alone." = "Branché en USB, le casque devient la sortie son, puis la sortie précédente est rétablie au débranchement. Désactivé, votre choix de sortie n’est pas touché.";
+"Software equalizer" = "Égaliseur logiciel";
+"Equalizes everything the Mac plays, before the headphone. Needs System Audio Recording permission. Use the Mac's volume; the headphone's own EQ cannot be changed while the cable is plugged in." = "Égalise tout ce que joue le Mac, avant le casque. Nécessite l’autorisation d’enregistrement de l’audio système. Utilisez le volume du Mac ; l’EQ du casque ne peut pas être modifié tant que le câble est branché.";
+"Equalizing system audio" = "Égalisation de l’audio système";
+"Waiting for the headphone audio device" = "En attente de la sortie audio du casque";
+"Headphone USB audio device not found" = "Sortie audio USB du casque introuvable";

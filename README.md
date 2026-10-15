@@ -35,6 +35,7 @@ directly from macOS.
 | Equalizer presets (Balanced, More bass, More treble, Voice) shown as 8-band curves — the bars move when you pick one | working |
 | Custom 8-band equalizer, saved locally | working |
 | EQ files: import an AutoEq / Equalizer APO `ParametricEQ.txt` (or a `GraphicEQ:` line) into the custom EQ, export the current curve | working, not yet tried on the headphone |
+| **Software equalizer (wired mode)**: with the USB-C cable plugged in, the Mac equalizes everything it plays with the same presets and 8 sliders | new, to be validated by ear |
 | Gestures: view and remap the customizable controls, restore the original table | experimental |
 | Menu bar item: battery and quick noise-control switching | working |
 | Notifications: low battery (20 % or 10 %) and headphone connected, configured in Settings (⌘,) | working |
@@ -89,7 +90,7 @@ The cask is marked `auto_updates`, so `brew upgrade` leaves the app to Sparkle.
 
 - macOS 14.2 or later (built with Xcode 27 / Swift 6.4)
 - A Nothing Headphone (1), paired and connected to your Mac
-- Bluetooth permission for the app, plus System Audio Recording for the Mac anchor mode (macOS asks on first use)
+- Bluetooth permission for the app, plus System Audio Recording for the Mac anchor mode and the software equalizer (macOS asks on first use)
 
 ## Build
 
@@ -109,7 +110,7 @@ sandboxed** (RFCOMM access).
 `Casks/nothing-x.rb` (`scripts/update-cask.sh`) and prints the `gh release` command that attaches the DMG
 **and** `appcast.xml` to the release.
 
-Unit tests (EQ file parsing): `swift test`.
+Unit tests (EQ files, head pose filter, onboarding, notifications, software EQ): `swift test`.
 
 To force English on a French system:
 `open -n "build/Nothing X.app" --args -AppleLanguages "(en)"`.
@@ -122,6 +123,8 @@ To force English on a French system:
 | `Sources/NothingX/BluetoothLink.swift` | IOBluetooth transport: finds the headphone, resolves the channel via SDP, reconnects |
 | `Sources/NothingX/EQInterchange.swift`, `EQFileActions.swift` | AutoEq / Equalizer APO import and export (pure parser + serializer, and the Import / Export buttons) |
 | `Tests/NothingXTests/` | unit tests for the EQ file parser (`swift test`) |
+| `Sources/NothingX/SystemAudioTap.swift` | system audio capture shared by the Mac anchor and the software EQ (process tap, tap-only aggregate) |
+| `Sources/NothingX/EQAudioEngine.swift`, `SoftwareEQ.swift`, `SoftwareEQSection.swift` | software equalizer for wired mode: engine, pure band mapping / headroom / policy, UI |
 | `Sources/NothingX/HeadphoneModel.swift` | observable state, request/response matching, settings logic |
 | `Sources/NothingX/ContentView.swift`, `Theme.swift`, `BandSlider.swift` | Nothing-style UI |
 | `Sources/NothingX/NotificationService.swift`, `NotificationRules.swift` | notification permission and posting; pure threshold / hysteresis rules |
@@ -183,6 +186,25 @@ then, so in wired mode:
   headset by itself, hence the option. The app only changes the system output while this is on.
 - Detection uses IOKit notifications (no polling); the output switch uses Core Audio. Neither needs a new
   permission.
+
+## Software equalizer (wired mode)
+
+With the USB-C cable plugged in, the headphone drops Bluetooth by design and shows up as a USB audio
+output, so its own EQ cannot be changed. The equalizer section then switches to a **software equalizer** run
+by the Mac (off by default, **On** under the equalizer): the same Core Audio process tap as the Mac anchor
+captures everything the Mac plays (muted at the source while it runs, the app's own output excluded), an
+8-band `AVAudioUnitEQ` (55 Hz … 13.2 kHz, peaking, Q = 1, ±12 dB) equalizes it, and the result goes to the
+headphone's USB output. The presets and sliders work without the Bluetooth link, on a local curve saved in
+`UserDefaults` (`softeq.enabled`, `softeq.profile`); **Custom** is the same saved curve as the headphone's
+Custom preset, and EQ files import into it.
+
+- **Headroom**: the EQ's global gain is lowered by the largest band boost (a +6 dB bass curve plays 6 dB
+  quieter overall), so no single boosted band can clip. Neighbouring boosts overlap, so on full-scale material
+  the summed curve can still exceed 0 dB by a dB or two between them. Cuts cost no level.
+- Slider moves apply live; gain changes are ramped (1 dB per 10 ms) so preset jumps do not click.
+- Use the Mac's volume keys. Unplugging the cable stops the equalizer and releases the tap, so system audio
+  comes back on its own; it starts again on the next plug if it was on.
+- The Mac anchor and the software equalizer both capture system audio: turning one on turns the other off.
 
 ## Notifications and Settings
 
