@@ -35,14 +35,14 @@ directly from macOS.
 | Equalizer presets (Balanced, More bass, More treble, Voice) shown as 8-band curves — the bars move when you pick one | working |
 | Custom 8-band equalizer, saved locally | working |
 | EQ files: import an AutoEq / Equalizer APO `ParametricEQ.txt` (or a `GraphicEQ:` line) into the custom EQ, export the current curve | working, not yet tried on the headphone |
-| **Software equalizer (wired mode)**: with the USB-C cable plugged in, the Mac equalizes everything it plays with the same presets and 8 sliders | new, to be validated by ear |
+| **Wired mode**: with the USB-C cable plugged in the equalizer keeps working (the Mac equalizes what it plays, same presets and sliders, same place); the rest is dimmed | working |
 | Gestures: view and remap the customizable controls, restore the original table | experimental |
 | Menu bar item: battery and quick noise-control switching | working |
 | Notifications: low battery (20 % or 10 %) and headphone connected, configured in Settings (⌘,) | working |
 | English UI, French when macOS is set to French | working |
 | Device settings: low latency, dual connection, adaptive ANC, in-ear detection (write and read-back checked on the headphone) | working |
 | Find my headphone (2 s pulse, asks you to take the headphone off first) | working |
-| Wired (USB) mode: the app notices the cable ("Wired (USB)" in the window and the menu bar) and can make the headphone the Mac's output while plugged in | detection checked on the headphone, output switching in testing |
+| Wired (USB) detection ("Wired (USB)" in the top bar and the menu bar), optional "use as the Mac's output" | detection verified, output switching in testing |
 
 Settings changed from the headphone's own buttons are picked up within a few seconds, and the app
 reconnects by itself when the headphone comes back.
@@ -124,7 +124,7 @@ To force English on a French system:
 | `Sources/NothingX/EQInterchange.swift`, `EQFileActions.swift` | AutoEq / Equalizer APO import and export (pure parser + serializer, and the Import / Export buttons) |
 | `Tests/NothingXTests/` | unit tests for the EQ file parser (`swift test`) |
 | `Sources/NothingX/SystemAudioTap.swift` | system audio capture shared by the Mac anchor and the software EQ (process tap, tap-only aggregate) |
-| `Sources/NothingX/EQAudioEngine.swift`, `SoftwareEQ.swift`, `SoftwareEQSection.swift` | software equalizer for wired mode: engine, pure band mapping / headroom / policy, UI |
+| `Sources/NothingX/EQAudioEngine.swift`, `SoftwareEQ.swift` | software equalizer for wired mode: engine, pure band mapping / headroom / policy |
 | `Sources/NothingX/HeadphoneModel.swift` | observable state, request/response matching, settings logic |
 | `Sources/NothingX/ContentView.swift`, `Theme.swift`, `BandSlider.swift` | Nothing-style UI |
 | `Sources/NothingX/NotificationService.swift`, `NotificationRules.swift` | notification permission and posting; pure threshold / hysteresis rules |
@@ -170,41 +170,31 @@ comes back on its own.
 ## Wired mode
 
 Plugging the USB-C cable makes the headphone **turn Bluetooth off by design** (Nothing says so on its support
-page), and the Mac cannot reopen the link while the cable is in. The app has no way to talk to the headphone
-then, so in wired mode:
+page), and the Mac cannot reopen the link while the cable is in. The app cannot talk to the headphone then, so
+the window keeps the same layout and simply dims what is unavailable: noise control, battery, spatial audio,
+gestures and device settings. The top bar reads **Wired (USB)**; the physical buttons keep working on the
+headphone itself.
 
-- **Works**: the app detects the headphone on USB (vendor `0xBE58`, product "Nothing Headphone (1)") and shows
-  **Wired (USB)** in the window, the menu bar and the first-launch tour, with the serial number read from the
-  USB descriptor. The headphone's physical buttons keep working, and it plays as a normal 2-channel, 48 kHz USB
-  audio device.
-- **Does not work**: noise control, battery, equalizer presets and curves, gestures, device settings, spatial
-  audio and Mac anchor (it needs the Bluetooth head-tracking stream). The controls are dimmed and a notice
-  explains why; unplug the cable and the app reconnects over Bluetooth.
-- **Optional**: Settings › Wired mode › *Use as the Mac's output* (off by default). When on, the app makes the
-  headphone the Mac's sound output on plug and gives the previous output back on unplug. If you pick another
-  output yourself while it is plugged in, the app leaves your choice alone. macOS does not switch to a USB
-  headset by itself, hence the option. The app only changes the system output while this is on.
-- Detection uses IOKit notifications (no polling); the output switch uses Core Audio. Neither needs a new
-  permission.
-
-## Software equalizer (wired mode)
-
-With the USB-C cable plugged in, the headphone drops Bluetooth by design and shows up as a USB audio
-output, so its own EQ cannot be changed. The equalizer section then switches to a **software equalizer** run
-by the Mac (off by default, **On** under the equalizer): the same Core Audio process tap as the Mac anchor
-captures everything the Mac plays (muted at the source while it runs, the app's own output excluded), an
-8-band `AVAudioUnitEQ` (55 Hz … 13.2 kHz, peaking, Q = 1, ±12 dB) equalizes it, and the result goes to the
-headphone's USB output. The presets and sliders work without the Bluetooth link, on a local curve saved in
-`UserDefaults` (`softeq.enabled`, `softeq.profile`); **Custom** is the same saved curve as the headphone's
-Custom preset, and EQ files import into it.
+**The equalizer keeps working**, in the same place with the same presets and sliders: while wired it drives a
+software equalizer run by the Mac. There is no switch. It runs only when the curve changes the sound and stops
+on a flat curve, like the headphone's own EQ. The same Core Audio process tap as the Mac anchor captures what the
+Mac plays (muted at the source while it runs, the app's own output excluded), an 8-band `AVAudioUnitEQ`
+(55 Hz … 13.2 kHz, peaking, Q = 1, ±12 dB) equalizes it, and the result goes to the headphone's USB output. The
+curve is saved locally (`UserDefaults`, `softeq.profile`); **Custom** is the same saved curve as the headphone's
+Custom preset, and EQ files import into it. It needs System Audio Recording permission the first time.
 
 - **Headroom**: the EQ's global gain is lowered by the largest band boost (a +6 dB bass curve plays 6 dB
   quieter overall), so no single boosted band can clip. Neighbouring boosts overlap, so on full-scale material
   the summed curve can still exceed 0 dB by a dB or two between them. Cuts cost no level.
 - Slider moves apply live; gain changes are ramped (1 dB per 10 ms) so preset jumps do not click.
-- Use the Mac's volume keys. Unplugging the cable stops the equalizer and releases the tap, so system audio
-  comes back on its own; it starts again on the next plug if it was on.
-- The Mac anchor and the software equalizer both capture system audio: turning one on turns the other off.
+- Use the Mac's volume keys. Unplugging the cable stops the equalizer and releases the tap, so system audio comes
+  back on its own; it starts again on the next plug if the saved curve is not flat.
+- The Mac anchor needs the Bluetooth sensor stream, so it is not available while wired.
+- **Optional**: Settings › Wired mode › *Use as the Mac's output* (off by default). When on, the app makes the
+  headphone the Mac's sound output on plug and gives the previous output back on unplug. If you pick another
+  output yourself while it is plugged in, the app leaves your choice alone. macOS does not switch to a USB
+  headset by itself, hence the option.
+- Detection uses IOKit notifications (no polling); the output switch uses Core Audio.
 
 ## Notifications and Settings
 

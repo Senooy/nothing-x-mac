@@ -583,10 +583,13 @@ final class HeadphoneModel {
     // changes while not wired. Like the Mac anchor it captures and mutes system audio, so the two are
     // mutually exclusive.
 
-    /// The user's choice, persisted; the engine runs only while wired (it resumes on the next plug).
-    var softwareEQEnabled: Bool = UserDefaults.standard.bool(forKey: "softeq.enabled") {
-        didSet { UserDefaults.standard.set(softwareEQEnabled, forKey: "softeq.enabled") }
+    /// There is no switch: like the headphone's own EQ, the software EQ simply follows the presets and
+    /// sliders. It runs only while wired and only when the curve actually changes the sound (a flat curve
+    /// needs no capture), and not after the system refused audio capture until the curve is touched again.
+    var softwareEQEnabled: Bool {
+        !softwareEQBlocked && softwareEQProfile.bands.contains { abs($0.gain) >= 0.05 }
     }
+    private var softwareEQBlocked = false
     private(set) var softwareEQRunning = false
     var softwareEQDetail = ""
     /// The local curve shown and applied while wired (8 bands, 55 Hz … 13.2 kHz, ±12 dB), persisted.
@@ -633,27 +636,21 @@ final class HeadphoneModel {
     }
 
     /// Starts or stops the engine to match the choice, the cable and the Mac anchor. Safe to call any time.
-    func syncSoftwareEQ() {
+    /// `allowStop: false` while a slider is being dragged: passing through zero must not tear the engine down.
+    func syncSoftwareEQ(allowStop: Bool = true) {
+        if !isWired { softwareEQBlocked = false }   // a new plug-in gets a fresh attempt
         let active = softwareEQRunning || softwareEQStart != nil
         switch SoftwareEQPolicy.action(enabled: softwareEQEnabled, wired: isWired,
                                        macAnchorActive: macAnchored, active: active) {
         case .start: startSoftwareEQ()
-        case .stop: stopSoftwareEQ()
+        case .stop: if allowStop { stopSoftwareEQ() }
         case .none: break
         }
     }
 
-    /// Turning the software EQ on turns the Mac anchor off (both capture system audio).
-    func setSoftwareEQEnabled(_ on: Bool) {
-        if on, macAnchored || anchorWanted { setMacAnchored(false) }
-        softwareEQEnabled = on
-        syncSoftwareEQ()
-    }
-
     /// Called when the Mac anchor is turned on.
     private func leaveSoftwareEQForMacAnchor() {
-        guard softwareEQEnabled || softwareEQRunning else { return }
-        softwareEQEnabled = false
+        guard softwareEQRunning || softwareEQStart != nil else { return }
         stopSoftwareEQ()
     }
 
@@ -677,7 +674,7 @@ final class HeadphoneModel {
                     }.value
                     if let failure {
                         // Capture refused or routing failed: switch off rather than retry in a loop.
-                        softwareEQEnabled = false
+                        softwareEQBlocked = true
                         softwareEQDetail = ""
                         status = String(format: String(localized: "[ERROR: %@]"), failure)
                     } else if SoftwareEQPolicy.shouldRun(enabled: softwareEQEnabled, wired: isWired, macAnchorActive: macAnchored) {
@@ -713,7 +710,9 @@ final class HeadphoneModel {
         var profile = softwareEQProfile
         for i in profile.bands.indices where i < gains.count { profile.bands[i].gain = SoftwareEQ.clampedGain(gains[i]) }
         if animated { withAnimation(.easeOut(duration: 0.3)) { softwareEQProfile = profile } } else { softwareEQProfile = profile }
+        softwareEQBlocked = false   // touching the curve retries after a refused capture
         eqEngine.setBands(profile.bands)
+        syncSoftwareEQ(allowStop: animated)
     }
 
     private func saveSoftwareEQProfile() {
@@ -737,6 +736,7 @@ final class HeadphoneModel {
     private func softwareCommitCustomEQ() {
         userCustomGains = softwareEQProfile.bands.map(\.gain)
         saveSoftwareEQProfile()
+        syncSoftwareEQ()   // a drag that ended on a flat curve stops the engine
     }
 
     private func softwareResetEQ() {
@@ -753,6 +753,7 @@ final class HeadphoneModel {
         }
         let mapping = EQInterchange.map(parsed, base: softwareEQProfile)
         withAnimation(.easeOut(duration: 0.3)) { softwareEQProfile = mapping.profile }
+        softwareEQBlocked = false
         eqEngine.setBands(mapping.profile.bands)
         softwareCommitCustomEQ()
         setEQImportNote(mapping.warnings)

@@ -164,15 +164,10 @@
 "[Show]" = "[Afficher]";
 "This tour: Settings › Welcome." = "Cette visite : Réglages › Bienvenue.";
 "Wired (USB)" = "Filaire (USB)";
-"Bluetooth is off while the cable is plugged in, so noise control, battery and the other settings are unavailable. The buttons on the headphone still work. Unplug the cable to control it from here." = "Le Bluetooth est coupé tant que le câble est branché : la réduction de bruit, la batterie et les autres réglages sont indisponibles. Les boutons du casque fonctionnent toujours. Débranchez le câble pour le piloter d’ici.";
-"Mac anchor needs the Bluetooth link." = "« Ancré au Mac » nécessite la liaison Bluetooth.";
 "The headphone is plugged in by USB, which turns Bluetooth off. Unplug the cable to connect, or skip for now." = "Le casque est branché en USB, ce qui coupe le Bluetooth. Débranchez le câble pour vous connecter, ou passez cette étape.";
 "Wired mode" = "Mode filaire";
 "Use as the Mac’s output" = "Utiliser comme sortie du Mac";
 "When plugged in by USB, make the headphone the sound output, then give the previous output back when unplugged. Off leaves your output choice alone." = "Branché en USB, le casque devient la sortie son, puis la sortie précédente est rétablie au débranchement. Désactivé, votre choix de sortie n’est pas touché.";
-"Software equalizer" = "Égaliseur logiciel";
-"Equalizes everything the Mac plays, before the headphone. Needs System Audio Recording permission. Use the Mac's volume; the headphone's own EQ cannot be changed while the cable is plugged in." = "Égalise tout ce que joue le Mac, avant le casque. Nécessite l’autorisation d’enregistrement de l’audio système. Utilisez le volume du Mac ; l’EQ du casque ne peut pas être modifié tant que le câble est branché.";
-"Equalizing system audio" = "Égalisation de l’audio système";
 "Waiting for the headphone audio device" = "En attente de la sortie audio du casque";
 "Headphone USB audio device not found" = "Sortie audio USB du casque introuvable";
 "Waiting for audio permission…" = "Attente de l'autorisation audio…";

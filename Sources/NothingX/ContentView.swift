@@ -17,7 +17,6 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: 40) {
                     hero
                     BluetoothPermissionNotice()
-                    WiredNotice()
                     noiseControl
                     spatialAudio
                     Spacer(minLength: 0)
@@ -26,7 +25,7 @@ struct ContentView: View {
                 .frame(width: 340)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 40) {
-                        if model.isWired { SoftwareEQSection() } else { equalizer }
+                        equalizer
                         gestures
                         DeviceSettingsView()
                     }
@@ -159,9 +158,6 @@ struct ContentView: View {
             if spatialChoice == .mac {
                 macAnchorControls
             }
-            if model.isWired {
-                Text("Mac anchor needs the Bluetooth link.").ntLabel(NTColor.disabled)
-            }
         }
         .disabled(!connected || state == nil)
         .opacity(connected ? 1 : 0.4)
@@ -193,17 +189,19 @@ struct ContentView: View {
     }
 
     // MARK: Equalizer
-    // Wired hook: `model.isWired` is true while the headphone is plugged in by USB (this section is then dimmed
-    // like every other control). The software equalizer for wired mode attaches here.
+    // Same section in Bluetooth and wired mode. While wired it drives the Mac's software EQ (the model routes
+    // it), so it stays usable; every other control is just dimmed.
 
     private var equalizer: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        let usable = connected || model.isWired
+        let profile = model.isWired ? model.softwareEQProfile : model.eqProfile
+        return VStack(alignment: .leading, spacing: 24) {
             SectionHeader(title: "Equalizer")
             Segmented(
                 options: EQPreset.allCases.map { ($0, $0.label) },
-                selection: model.selectedPreset
+                selection: model.isWired ? model.softwareSelectedPreset : model.selectedPreset
             ) { model.selectPreset($0) }
-            if let eq = model.eqProfile {
+            if let eq = profile {
                 HStack(alignment: .top, spacing: 0) {
                     ForEach(eq.bands) { band in
                         BandSlider(gain: band.gain, freq: band.freq) { model.setBandGain(band.id, $0) } onEnd: {
@@ -224,8 +222,8 @@ struct ContentView: View {
                 }
             }
         }
-        .disabled(!connected || spatialOn)
-        .opacity(connected ? (spatialOn ? 0.4 : 1) : 0.4)
+        .disabled(!usable || (spatialOn && !model.isWired))
+        .opacity(usable ? ((spatialOn && !model.isWired) ? 0.4 : 1) : 0.4)
     }
 
     // MARK: Gestures
