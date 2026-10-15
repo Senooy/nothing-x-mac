@@ -163,3 +163,10 @@
 "Replay it any time." = "Replay it any time.";
 "[Show]" = "[Show]";
 "This tour: Settings › Welcome." = "This tour: Settings › Welcome.";
+"Wired (USB)" = "Wired (USB)";
+"Bluetooth is off while the cable is plugged in, so noise control, battery and the other settings are unavailable. The buttons on the headphone still work. Unplug the cable to control it from here." = "Bluetooth is off while the cable is plugged in, so noise control, battery and the other settings are unavailable. The buttons on the headphone still work. Unplug the cable to control it from here.";
+"Mac anchor needs the Bluetooth link." = "Mac anchor needs the Bluetooth link.";
+"The headphone is plugged in by USB, which turns Bluetooth off. Unplug the cable to connect, or skip for now." = "The headphone is plugged in by USB, which turns Bluetooth off. Unplug the cable to connect, or skip for now.";
+"Wired mode" = "Wired mode";
+"Use as the Mac’s output" = "Use as the Mac’s output";
+"When plugged in by USB, make the headphone the sound output, then give the previous output back when unplugged. Off leaves your output choice alone." = "When plugged in by USB, make the headphone the sound output, then give the previous output back when unplugged. Off leaves your output choice alone.";

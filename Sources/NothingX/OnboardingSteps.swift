@@ -120,12 +120,17 @@ struct ConnectStep: View {
 
     private var searchingState: some View {
         VStack(alignment: .leading, spacing: 28) {
-            OnboardingBody("Switch the headphone on. If it is not paired with this Mac yet, hold its pairing button until the light blinks, then pair it in System Settings › Bluetooth.")
+            if model.isWired {
+                OnboardingBody("The headphone is plugged in by USB, which turns Bluetooth off. Unplug the cable to connect, or skip for now.")
+            } else {
+                OnboardingBody("Switch the headphone on. If it is not paired with this Mac yet, hold its pairing button until the light blinks, then pair it in System Settings › Bluetooth.")
+            }
             HStack(spacing: 8) {
                 Circle()
                     .stroke(NTColor.disabled, lineWidth: 1)
                     .frame(width: 7, height: 7)
-                (model.connection == .connecting ? Text("Connecting…") : Text("Searching for headphone"))
+                (model.isWired ? Text("Wired (USB)")
+                    : model.connection == .connecting ? Text("Connecting…") : Text("Searching for headphone"))
                     .ntLabel(NTColor.disabled)
             }
         }

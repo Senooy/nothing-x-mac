@@ -131,7 +131,9 @@ struct MenuContent: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        if model.connection == .connected {
+        if model.isWired {
+            Text("Wired (USB)")
+        } else if model.connection == .connected {
             Text(verbatim: "\(model.deviceName) — \(model.battery.map { "\($0)%" } ?? "…")")
         } else if model.connection == .permissionPending {
             Text("Waiting for Bluetooth permission…")

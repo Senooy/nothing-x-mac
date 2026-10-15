@@ -52,7 +52,7 @@ final class HeadphoneModel {
     private var eqEditedAt = Date.distantPast
     private(set) var linkStarted = false
 
-    init(startLink: Bool = true) {
+    init(startLink: Bool = true, startUSBMonitor: Bool = true) {
         transport.onState = { [weak self] state, name in
             MainActor.assumeIsolated { self?.linkChanged(state, name) }
         }
@@ -60,6 +60,7 @@ final class HeadphoneModel {
             MainActor.assumeIsolated { self?.handle(frame) }
         }
         if startLink { self.startLink() }
+        if startUSBMonitor { self.startUSBMonitor() }
         // The headphone can be changed from its own buttons or another device: poll the
         // cheap settings every few seconds, the battery less often.
         batteryTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
@@ -530,6 +531,32 @@ final class HeadphoneModel {
         macAnchored = false
         anchorDetail = ""
         if !remember { anchorWanted = false }
+    }
+
+    // MARK: Wired (USB)
+
+    /// The headphone is plugged in by its USB cable. It drops Bluetooth while the cable is in, so the
+    /// control link (noise control, battery, EQ, gestures, settings, head tracking) is unavailable.
+    private(set) var usbPresent = false
+
+    /// Plugged in and not controllable over Bluetooth. Not a `Connection` case: the Bluetooth link code is unaffected.
+    var isWired: Bool { usbPresent && connection != .connected }
+
+    private let usbMonitor = USBHeadphoneMonitor()
+
+    /// Cheap and non-blocking: IOKit notifications on the main run loop, no polling.
+    private func startUSBMonitor() {
+        usbMonitor.onChange = { [weak self] present in self?.usbChanged(present) }
+        usbMonitor.start()
+    }
+
+    private func usbChanged(_ present: Bool) {
+        usbPresent = present
+        // Show the serial number even though the Bluetooth link never ran (the USB descriptor carries the same one).
+        if present, serial == nil { serial = usbMonitor.serial }
+        // The Mac-anchor renderer needs the Bluetooth sensor stream and output: stop it (the choice is remembered).
+        if isWired { stopMacAnchor(remember: true) }
+        WiredOutputController.shared.usbPresenceChanged(present)
     }
 
     // MARK: Device settings

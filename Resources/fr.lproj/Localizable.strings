@@ -163,3 +163,10 @@
 "Replay it any time." = "Rejouable à tout moment.";
 "[Show]" = "[Afficher]";
 "This tour: Settings › Welcome." = "Cette visite : Réglages › Bienvenue.";
+"Wired (USB)" = "Filaire (USB)";
+"Bluetooth is off while the cable is plugged in, so noise control, battery and the other settings are unavailable. The buttons on the headphone still work. Unplug the cable to control it from here." = "Le Bluetooth est coupé tant que le câble est branché : la réduction de bruit, la batterie et les autres réglages sont indisponibles. Les boutons du casque fonctionnent toujours. Débranchez le câble pour le piloter d’ici.";
+"Mac anchor needs the Bluetooth link." = "« Ancré au Mac » nécessite la liaison Bluetooth.";
+"The headphone is plugged in by USB, which turns Bluetooth off. Unplug the cable to connect, or skip for now." = "Le casque est branché en USB, ce qui coupe le Bluetooth. Débranchez le câble pour vous connecter, ou passez cette étape.";
+"Wired mode" = "Mode filaire";
+"Use as the Mac’s output" = "Utiliser comme sortie du Mac";
+"When plugged in by USB, make the headphone the sound output, then give the previous output back when unplugged. Off leaves your output choice alone." = "Branché en USB, le casque devient la sortie son, puis la sortie précédente est rétablie au débranchement. Désactivé, votre choix de sortie n’est pas touché.";

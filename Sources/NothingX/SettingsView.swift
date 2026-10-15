@@ -8,6 +8,7 @@ struct SettingsView: View {
             NotificationsSettingsSection()
             UpdateSettingsSection()
             OnboardingSettingsSection()
+            WiredSettingsSection()
             // Add further sections here, one line each.
         }
         .padding(.horizontal, 32)
