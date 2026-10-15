@@ -22,10 +22,9 @@ final class SpatialAudioEngine {
 
     private(set) var isRunning = false
 
-    private var tapID = AudioObjectID(kAudioObjectUnknown)
-    private var aggregateID = AudioObjectID(kAudioObjectUnknown)
-    private var ioProcID: AudioDeviceIOProcID?
-    private let ioQueue = DispatchQueue(label: "nx.spatial.tap", qos: .userInteractive)
+    /// Tap + tap-only aggregate + IOProc (see `SystemAudioTap`).
+    private let tap = SystemAudioTap(tapName: "Nothing X spatial tap", aggregateName: "Nothing X spatial",
+                                     queueLabel: "nx.spatial.tap")
 
     private let engine = AVAudioEngine()
     private let environment = AVAudioEnvironmentNode()
@@ -48,11 +47,13 @@ final class SpatialAudioEngine {
             throw Failure(message: String(localized: "Headphone audio device not found"))
         }
         do {
-            try createTap(excludingOwnProcess: true)
-            try createAggregate()
-            let sampleRate = try tapSampleRate()
+            let sampleRate = try tap.prepare()
             try buildGraph(sampleRate: sampleRate, outputDevice: device.id, mode: mode)
-            try startTapIO()
+            let left = ringL, right = ringR
+            try tap.startIO { l, r, frames in
+                left.write(l, frames)
+                right.write(r, frames)
+            }
             try engine.start()
             isRunning = true
             // The output device can change its sample rate or format (e.g. when the headset switches profile).
@@ -70,15 +71,7 @@ final class SpatialAudioEngine {
         if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
         configObserver = nil
         if engine.isRunning { engine.stop() }
-        if let proc = ioProcID, aggregateID != kAudioObjectUnknown {
-            AudioDeviceStop(aggregateID, proc)
-            AudioDeviceDestroyIOProcID(aggregateID, proc)
-        }
-        ioProcID = nil
-        if aggregateID != kAudioObjectUnknown { AudioHardwareDestroyAggregateDevice(aggregateID) }
-        aggregateID = AudioObjectID(kAudioObjectUnknown)
-        if tapID != kAudioObjectUnknown { AudioHardwareDestroyProcessTap(tapID) }
-        tapID = AudioObjectID(kAudioObjectUnknown)
+        tap.stop()
         for node in sources { engine.detach(node) }
         sources.removeAll()
         if environment.engine != nil { engine.detach(environment) }
@@ -89,96 +82,6 @@ final class SpatialAudioEngine {
     /// Head orientation in degrees (yaw positive = turn left, like AVAudio3DAngularOrientation).
     func setListener(yaw: Float, pitch: Float, roll: Float) {
         environment.listenerAngularOrientation = AVAudio3DAngularOrientation(yaw: yaw, pitch: pitch, roll: roll)
-    }
-
-    // MARK: Core Audio tap
-
-    private func createTap(excludingOwnProcess: Bool) throws {
-        var excluded: [AudioObjectID] = []
-        if excludingOwnProcess, let own = AudioDevices.processObject(for: getpid()) { excluded = [own] }
-        let description = CATapDescription(stereoGlobalTapButExcludeProcesses: excluded)
-        description.name = "Nothing X spatial tap"
-        description.isPrivate = true
-        description.muteBehavior = .mutedWhenTapped
-        var id = AudioObjectID(kAudioObjectUnknown)
-        let status = AudioHardwareCreateProcessTap(description, &id)
-        guard status == noErr else {
-            throw Failure(message: String(format: String(localized: "System audio capture failed (%d)"), Int(status)))
-        }
-        tapID = id
-        tapUUID = description.uuid
-    }
-
-    private var tapUUID = UUID()
-
-    /// The aggregate device holds only the tap. Adding the headphone as a sub-device would also open its
-    /// Bluetooth microphone, which forces the headset into the low-quality phone profile (16 kHz).
-    private func createAggregate() throws {
-        let dictionary: [String: Any] = [
-            kAudioAggregateDeviceNameKey: "Nothing X spatial",
-            kAudioAggregateDeviceUIDKey: UUID().uuidString,
-            kAudioAggregateDeviceIsPrivateKey: true,
-            kAudioAggregateDeviceIsStackedKey: false,
-            kAudioAggregateDeviceTapAutoStartKey: true,
-            kAudioAggregateDeviceTapListKey: [[
-                kAudioSubTapDriftCompensationKey: true,
-                kAudioSubTapUIDKey: tapUUID.uuidString,
-            ]],
-        ]
-        var id = AudioObjectID(kAudioObjectUnknown)
-        let status = AudioHardwareCreateAggregateDevice(dictionary as CFDictionary, &id)
-        guard status == noErr else {
-            throw Failure(message: String(format: String(localized: "Audio routing failed (%d)"), Int(status)))
-        }
-        aggregateID = id
-    }
-
-    private func tapSampleRate() throws -> Double {
-        var address = AudioObjectPropertyAddress(mSelector: kAudioTapPropertyFormat,
-                                                 mScope: kAudioObjectPropertyScopeGlobal,
-                                                 mElement: kAudioObjectPropertyElementMain)
-        var format = AudioStreamBasicDescription()
-        var size = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
-        let status = AudioObjectGetPropertyData(tapID, &address, 0, nil, &size, &format)
-        guard status == noErr, format.mSampleRate > 0 else {
-            throw Failure(message: String(format: String(localized: "System audio capture failed (%d)"), Int(status)))
-        }
-        return format.mSampleRate
-    }
-
-    private func startTapIO() throws {
-        let left = ringL, right = ringR
-        var scratchL = [Float](repeating: 0, count: 16384)
-        var scratchR = [Float](repeating: 0, count: 16384)
-        let status = AudioDeviceCreateIOProcIDWithBlock(&ioProcID, aggregateID, ioQueue) { _, inputData, _, _, _ in
-            let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: inputData))
-            guard buffers.count > 0 else { return }
-            if buffers.count >= 2 {
-                // Non-interleaved: one buffer per channel.
-                guard let l = buffers[0].mData, let r = buffers[1].mData else { return }
-                let frames = Int(buffers[0].mDataByteSize) / MemoryLayout<Float>.size
-                left.write(l.assumingMemoryBound(to: Float.self), frames)
-                right.write(r.assumingMemoryBound(to: Float.self), frames)
-            } else if let data = buffers[0].mData {
-                // Interleaved stereo.
-                let channels = max(Int(buffers[0].mNumberChannels), 1)
-                let frames = min(Int(buffers[0].mDataByteSize) / (MemoryLayout<Float>.size * channels), scratchL.count)
-                let samples = data.assumingMemoryBound(to: Float.self)
-                for i in 0..<frames {
-                    scratchL[i] = samples[i * channels]
-                    scratchR[i] = samples[i * channels + (channels > 1 ? 1 : 0)]
-                }
-                scratchL.withUnsafeBufferPointer { left.write($0.baseAddress!, frames) }
-                scratchR.withUnsafeBufferPointer { right.write($0.baseAddress!, frames) }
-            }
-        }
-        guard status == noErr, let proc = ioProcID else {
-            throw Failure(message: String(format: String(localized: "System audio capture failed (%d)"), Int(status)))
-        }
-        let started = AudioDeviceStart(aggregateID, proc)
-        guard started == noErr else {
-            throw Failure(message: String(format: String(localized: "System audio capture failed (%d)"), Int(started)))
-        }
     }
 
     // MARK: Playback graph
