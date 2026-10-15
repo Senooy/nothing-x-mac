@@ -163,3 +163,8 @@
 "Replay it any time." = "Replay it any time.";
 "[Show]" = "[Show]";
 "This tour: Settings › Welcome." = "This tour: Settings › Welcome.";
+"Software equalizer" = "Software equalizer";
+"Equalizes everything the Mac plays, before the headphone. Needs System Audio Recording permission. Use the Mac's volume; the headphone's own EQ cannot be changed while the cable is plugged in." = "Equalizes everything the Mac plays, before the headphone. Needs System Audio Recording permission. Use the Mac's volume; the headphone's own EQ cannot be changed while the cable is plugged in.";
+"Equalizing system audio" = "Equalizing system audio";
+"Waiting for the headphone audio device" = "Waiting for the headphone audio device";
+"Headphone USB audio device not found" = "Headphone USB audio device not found";

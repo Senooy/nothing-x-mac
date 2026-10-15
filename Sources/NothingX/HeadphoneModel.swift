@@ -65,6 +65,7 @@ final class HeadphoneModel {
         batteryTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.poll() }
         }
+        setUpSoftwareEQ()
     }
 
     // MARK: Connection
@@ -101,6 +102,7 @@ final class HeadphoneModel {
             }
         }
         notifier.connectionChanged(connected: connection == .connected, deviceName: deviceName)
+        syncSoftwareEQ()
     }
 
     private func handle(_ frame: Frame) {
@@ -280,6 +282,7 @@ final class HeadphoneModel {
 
     /// Picks a preset: the bars move right away, then the curve is sent to the headphone and read back.
     func selectPreset(_ preset: EQPreset) {
+        if isWired { return softwareSelectPreset(preset) }
         guard eqProfile != nil else { return }
         eqCommit?.cancel()
         eqCommit = nil
@@ -302,6 +305,7 @@ final class HeadphoneModel {
 
     /// Edits a band locally; the write to the headphone is deferred while dragging.
     func setBandGain(_ index: Int, _ gain: Float) {
+        if isWired { return softwareSetBandGain(index, gain) }
         guard eqProfile?.bands.indices.contains(index) == true else { return }
         eqEditedAt = Date()
         eqProfile?.bands[index].gain = gain
@@ -315,6 +319,7 @@ final class HeadphoneModel {
     /// Sends the current bars as the Custom curve (called when a drag ends). Commits never overlap: edits
     /// made while one is in flight are sent right after it, always with the latest bars.
     func commitCustomEQ() {
+        if isWired { return softwareCommitCustomEQ() }
         guard let current = eqProfile else { return }
         userCustomGains = current.bands.map(\.gain)
         eqEditedAt = Date()
@@ -339,6 +344,7 @@ final class HeadphoneModel {
     }
 
     func resetCustomEQ() {
+        if isWired { return softwareResetEQ() }
         guard var eq = eqProfile else { return }
         for i in eq.bands.indices { eq.bands[i].gain = 0 }
         eq.gain = 0
@@ -356,6 +362,7 @@ final class HeadphoneModel {
     /// manual edit) and returns the warnings. An empty-handed import changes nothing.
     @discardableResult
     func importEQ(from text: String) -> [String] {
+        if isWired { return softwareImportEQ(text) }
         guard let current = eqProfile else {
             report(false, String(localized: "Not connected"))
             return []
@@ -379,7 +386,8 @@ final class HeadphoneModel {
 
     /// The current custom curve as `ParametricEQ.txt`, or nil until it has been read.
     func exportEQ() -> String? {
-        eqProfile.map(EQInterchange.export)
+        if isWired { return EQInterchange.export(softwareEQProfile) }
+        return eqProfile.map(EQInterchange.export)
     }
 
     /// For file read / write failures in the view.
@@ -468,6 +476,7 @@ final class HeadphoneModel {
     /// Turns the app's own binaural renderer on or off. While on, the headphone's built-in spatial
     /// processing is switched off so the effect is not applied twice.
     func setMacAnchored(_ on: Bool) {
+        if on { leaveSoftwareEQForMacAnchor() }
         anchorWanted = on
         if on { Task { await startMacAnchor() } } else { stopMacAnchor(remember: false) }
     }
@@ -530,6 +539,180 @@ final class HeadphoneModel {
         macAnchored = false
         anchorDetail = ""
         if !remember { anchorWanted = false }
+    }
+
+    // MARK: Software EQ
+
+    // Wired (USB) mode: with the cable plugged in the headphone drops Bluetooth, so its own EQ is out of
+    // reach. The Mac then equalizes everything it plays (`EQAudioEngine`) on a local 8-band profile, and
+    // the EQ controls drive that profile instead of sending Bluetooth commands. Nothing here runs or
+    // changes while not wired. Like the Mac anchor it captures and mutes system audio, so the two are
+    // mutually exclusive.
+
+    /// The user's choice, persisted; the engine runs only while wired (it resumes on the next plug).
+    var softwareEQEnabled: Bool = UserDefaults.standard.bool(forKey: "softeq.enabled") {
+        didSet { UserDefaults.standard.set(softwareEQEnabled, forKey: "softeq.enabled") }
+    }
+    private(set) var softwareEQRunning = false
+    var softwareEQDetail = ""
+    /// The local curve shown and applied while wired (8 bands, 55 Hz … 13.2 kHz, ±12 dB), persisted.
+    var softwareEQProfile: EQProfile = HeadphoneModel.savedSoftwareEQProfile()
+    private let eqEngine = EQAudioEngine()
+    private var softwareEQStart: Task<Void, Never>?
+    private static let softwareEQProfileKey = "softeq.profile"
+
+    private static func savedSoftwareEQProfile() -> EQProfile {
+        if let data = UserDefaults.standard.data(forKey: softwareEQProfileKey),
+           let saved = EQProfile.decode(Array(data)), saved.bands.count == SoftwareEQ.frequencies.count {
+            return saved
+        }
+        return SoftwareEQ.profile(gains: EQPreset.balanced.gains!)
+    }
+
+    /// Which EQ the equalizer controls drive right now.
+    var eqPath: EQPath { EQPath.active(isWired: isWired) }
+
+    var softwareSelectedPreset: EQPreset { SoftwareEQ.preset(matching: softwareEQProfile.bands.map(\.gain)) }
+
+    /// Called once from `init`.
+    private func setUpSoftwareEQ() {
+        eqEngine.onDeviceLost = { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.softwareEQRunning = false
+                self.softwareEQDetail = ""
+                self.syncSoftwareEQ()   // still wired (device reset): starts again; unplugged: stays off
+            }
+        }
+        observeWiredForSoftwareEQ()
+        syncSoftwareEQ()
+    }
+
+    /// Re-syncs whenever `isWired` changes (it is computed from observable state).
+    private func observeWiredForSoftwareEQ() {
+        withObservationTracking { _ = isWired } onChange: { [weak self] in
+            Task { @MainActor in
+                self?.syncSoftwareEQ()
+                self?.observeWiredForSoftwareEQ()
+            }
+        }
+    }
+
+    /// Starts or stops the engine to match the choice, the cable and the Mac anchor. Safe to call any time.
+    func syncSoftwareEQ() {
+        let active = softwareEQRunning || softwareEQStart != nil
+        switch SoftwareEQPolicy.action(enabled: softwareEQEnabled, wired: isWired,
+                                       macAnchorActive: macAnchored, active: active) {
+        case .start: startSoftwareEQ()
+        case .stop: stopSoftwareEQ()
+        case .none: break
+        }
+    }
+
+    /// Turning the software EQ on turns the Mac anchor off (both capture system audio).
+    func setSoftwareEQEnabled(_ on: Bool) {
+        if on, macAnchored || anchorWanted { setMacAnchored(false) }
+        softwareEQEnabled = on
+        syncSoftwareEQ()
+    }
+
+    /// Called when the Mac anchor is turned on.
+    private func leaveSoftwareEQForMacAnchor() {
+        guard softwareEQEnabled || softwareEQRunning else { return }
+        softwareEQEnabled = false
+        stopSoftwareEQ()
+    }
+
+    /// Core Audio may publish the USB device a moment after the cable is detected: wait for it a little.
+    private func startSoftwareEQ() {
+        softwareEQStart = Task {
+            for _ in 0..<10 {
+                guard !Task.isCancelled else { return }
+                guard SoftwareEQPolicy.shouldRun(enabled: softwareEQEnabled, wired: isWired, macAnchorActive: macAnchored) else {
+                    softwareEQStart = nil
+                    softwareEQDetail = ""
+                    return
+                }
+                if let device = AudioDevices.usbOutputDevice(forSoftwareEQ: "nothing") {
+                    do {
+                        try eqEngine.start(device: device, bands: softwareEQProfile.bands)
+                        softwareEQRunning = true
+                        softwareEQDetail = String(localized: "Equalizing system audio")
+                    } catch {
+                        // Capture refused or routing failed: switch off rather than retry in a loop.
+                        softwareEQEnabled = false
+                        softwareEQDetail = ""
+                        status = String(format: String(localized: "[ERROR: %@]"), error.localizedDescription)
+                    }
+                    softwareEQStart = nil
+                    return
+                }
+                softwareEQDetail = String(localized: "Waiting for the headphone audio device")
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            guard !Task.isCancelled else { return }
+            softwareEQStart = nil
+            softwareEQDetail = ""
+            report(false, String(localized: "Headphone USB audio device not found"))
+        }
+    }
+
+    private func stopSoftwareEQ() {
+        softwareEQStart?.cancel()
+        softwareEQStart = nil
+        eqEngine.stop()   // destroys the tap: system audio comes back by itself
+        softwareEQRunning = false
+        softwareEQDetail = ""
+    }
+
+    private func softwareApplyGains(_ gains: [Float], animated: Bool) {
+        var profile = softwareEQProfile
+        for i in profile.bands.indices where i < gains.count { profile.bands[i].gain = SoftwareEQ.clampedGain(gains[i]) }
+        if animated { withAnimation(.easeOut(duration: 0.3)) { softwareEQProfile = profile } } else { softwareEQProfile = profile }
+        eqEngine.setBands(profile.bands)
+    }
+
+    private func saveSoftwareEQProfile() {
+        UserDefaults.standard.set(Data(softwareEQProfile.encode()), forKey: Self.softwareEQProfileKey)
+    }
+
+    private func softwareSelectPreset(_ preset: EQPreset) {
+        softwareApplyGains(preset.gains ?? userCustomGains, animated: true)
+        saveSoftwareEQProfile()
+    }
+
+    /// Live while dragging: the engine follows every step.
+    private func softwareSetBandGain(_ index: Int, _ gain: Float) {
+        guard softwareEQProfile.bands.indices.contains(index) else { return }
+        var gains = softwareEQProfile.bands.map(\.gain)
+        gains[index] = gain
+        softwareApplyGains(gains, animated: false)
+    }
+
+    /// End of a drag: the curve becomes the user's Custom curve (shared with the headphone's Custom preset).
+    private func softwareCommitCustomEQ() {
+        userCustomGains = softwareEQProfile.bands.map(\.gain)
+        saveSoftwareEQProfile()
+    }
+
+    private func softwareResetEQ() {
+        softwareApplyGains([Float](repeating: 0, count: softwareEQProfile.bands.count), animated: true)
+        softwareCommitCustomEQ()
+    }
+
+    private func softwareImportEQ(_ text: String) -> [String] {
+        let parsed = EQInterchange.parse(text)
+        guard !parsed.filters.isEmpty else {
+            report(false, String(localized: "No EQ filters found"))
+            setEQImportNote(parsed.warnings)
+            return parsed.warnings
+        }
+        let mapping = EQInterchange.map(parsed, base: softwareEQProfile)
+        withAnimation(.easeOut(duration: 0.3)) { softwareEQProfile = mapping.profile }
+        eqEngine.setBands(mapping.profile.bands)
+        softwareCommitCustomEQ()
+        setEQImportNote(mapping.warnings)
+        return mapping.warnings
     }
 
     // MARK: Device settings

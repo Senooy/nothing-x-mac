@@ -25,7 +25,7 @@ struct ContentView: View {
                 .frame(width: 340)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 40) {
-                        equalizer
+                        if model.isWired { SoftwareEQSection() } else { equalizer }
                         gestures
                         DeviceSettingsView()
                     }
