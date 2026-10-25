@@ -234,8 +234,55 @@ waits for the headphone, offers the two notifications and introduces the Mac anc
 - Gesture rewrites are accepted and read back by the headphone, but their effect on the physical
   controls has not been verified.
 
+## Contributing
+
+Pull requests are very welcome. The app only supports the **Nothing Headphone (1)** today because that is the
+only device its author owns, and the goal is to cover as many Nothing and CMF devices as possible. If you own
+another one, you are the person who can make that happen.
+
+You do not have to write Swift to help. An issue with your model, its firmware version, and whether the app
+finds and connects to it is already useful, and so is a note on which commands from
+[`Protocol.md`](Protocol.md) your device answers to.
+
+### Adding a new device
+
+1. **Open an issue first** with the device name, firmware version and what you have tried, so nobody
+   duplicates the work and we can agree on the approach.
+2. **Check what is shared.** Start from [`Protocol.md`](Protocol.md): the framing, CRC and command families
+   may be the same on your device, but that is only known for the Headphone (1). The public references listed
+   at the top of that file include notes on other models. Treat anything not confirmed on your hardware as
+   *documented*, not *verified*.
+3. **Find the right place in the code:**
+   - `Sources/NothingX/BluetoothLink.swift` finds the device (today: the first connected paired device whose
+     name contains "nothing", then its "NT LINK" service through SDP). A CMF product may need a different
+     match here.
+   - `Sources/NothingX/Protocol.swift` holds the frame codec, command ids and models (ANC modes, EQ,
+     gestures, settings). Per-model differences usually belong here, for example other ANC levels, a different
+     number of EQ bands, or a left and right `side` for earbuds instead of the single unit `06`.
+   - `Sources/NothingX/HeadphoneModel.swift` turns replies into state, and the views (`ContentView.swift`,
+     `DeviceSettingsView.swift`) should hide controls the device does not have rather than show broken ones.
+4. **Add tests** in `Tests/NothingXTests/` for any new parsing or encoding, in the style of `ProtocolTests.swift`.
+5. **Document it in `Protocol.md`**, in a section for your model, and keep the existing tags: **verified**
+   (written and read back on the device), **behaviour unverified** (accepted but the effect is not confirmed),
+   **documented** (from a public source, not tried). Please do not rewrite the Headphone (1) notes to fit
+   another device.
+6. **Say what you tested on** in the pull request: model, firmware, macOS version, and what works or does not.
+   A screenshot of the app with your device connected helps a lot.
+
+### Ground rules
+
+- Only test on hardware you own. Writing to a device can change its settings, so begin with reads, and add a
+  read-back check to every write.
+- Never commit serial numbers or Bluetooth addresses. They show up in the app and in logs, so check your
+  screenshots and captures before sharing them.
+- Build with `./build.sh` and run `swift test` before opening the pull request. The app has to run as a real
+  `.app` bundle (see [Build](#build)).
+- AI-assisted contributions are fine, as this project is one itself, as long as you have tested the change on
+  real hardware and say so.
+
 ## Roadmap
 
+- [ ] Support other Nothing and CMF devices (see [Contributing](#contributing))
 - [x] Decode the transport and framing
 - [x] ANC, EQ preset and custom EQ read/write
 - [x] Core library: transport, protocol, model
